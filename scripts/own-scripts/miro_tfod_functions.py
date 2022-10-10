@@ -1,0 +1,237 @@
+
+# pip install aiohttp
+# pip install nest-asyncio
+# cd Tensorflow\scripts & python miro-sticky-notes-sync.py
+
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+import os
+from object_detection.utils import config_util
+from object_detection.builders import model_builder
+from object_detection.utils import visualization_utils as viz_utils
+from object_detection.utils import label_map_util
+import tensorflow as tf
+
+import config
+from miro_rest_api_functions import get_all_miro_board_names_and_ids, get_all_items, delete_item, delete_all_items, create_item, create_all_items, create_new_miro_board_or_get_existing
+
+import aiohttp
+import asyncio
+import nest_asyncio
+nest_asyncio.apply()
+
+
+files = config.files
+paths = config.paths
+
+
+# VARS FOR REAL TIME OBJECT DETECTION
+tf.config.run_functions_eagerly(True)
+# Load pipeline config and build a detection model
+configs = config_util.get_configs_from_pipeline_file(
+    files['CUSTOM_MODEL_PIPELINE_CONFIG'])
+detection_model = model_builder.build(
+    model_config=configs['model'], is_training=False)
+category_index = label_map_util.create_category_index_from_labelmap(
+    files['LABELMAP'])
+
+min_score_thresh = 0.8
+line_thickness = 10
+
+
+# FUNCTIONS NECESSARY FOR REAL TIME OBJECT DETECTION
+@ tf.function
+def detect_fn(image):
+    image, shapes = detection_model.preprocess(image)
+    prediction_dict = detection_model.predict(image, shapes)
+    detections = detection_model.postprocess(prediction_dict, shapes)
+    return detections
+
+
+# LOAD THE LATEST CHECKPOINT OF THE OBJECT DETECTION MODEL
+# Seems to be necessary for any visual detection
+# TODO: find automatically the highest ckpt and set it
+def load_latest_checkpoint_of_custom_object_detection_model():
+    # Restore checkpoint
+    ckpt = tf.compat.v2.train.Checkpoint(model=detection_model)
+    ckpt.restore(os.path.join(
+        paths['CUSTOM_MODEL_PATH'], 'ckpt-11')).expect_partial()
+
+
+def get_detections_from_img(image):
+    image_np = np.array(image)
+    input_tensor = tf.convert_to_tensor(
+        np.expand_dims(image_np, 0), dtype=tf.float32)
+    detections = detect_fn(input_tensor)
+    return detections
+
+
+def visualize_detections_from_image(
+    image,
+    detections,
+    category_index=category_index,
+    min_score_thresh=min_score_thresh,
+    line_thickness=line_thickness,
+    visualize_bounding_box_detections_in_image=True
+):
+    image_np = np.array(image)
+
+    num_detections = int(detections.pop('num_detections'))
+    detections = {key: value[0, :num_detections].numpy()
+                  for key, value in detections.items()}
+    detections['num_detections'] = num_detections
+
+    # detection_classes should be ints.
+    detections['detection_classes'] = detections['detection_classes'].astype(
+        np.int64)
+
+    label_id_offset = 1
+    image_np_with_detections = image_np.copy()
+
+    viz_utils.visualize_boxes_and_labels_on_image_array(
+        image_np_with_detections,
+        detections['detection_boxes'],
+        detections['detection_classes']+label_id_offset,
+        detections['detection_scores'],
+        category_index,
+        use_normalized_coordinates=True,
+        max_boxes_to_draw=50,
+        min_score_thresh=min_score_thresh,
+        agnostic_mode=False,
+        line_thickness=line_thickness)
+
+    if visualize_bounding_box_detections_in_image:
+        # TODO: plt.show seems not to work, replace it with cv2.imshow?
+        # plt.imshow(cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB))
+        # plt.show()
+        cv2.imshow("TEST", image_np_with_detections)
+        # waits for user to press any key
+        # (this is necessary to avoid Python kernel form crashing)
+        cv2.waitKey(0)
+
+        if cv2.waitKey(10) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
+
+    return image_np_with_detections
+
+
+def get_bounding_boxes_above_min_score_thres(detections, imgHeight, imgWidth):
+    # filter data for only the necessary information
+    formatted_scanned_object_detection_boxes = []
+    for index, detection_score in enumerate(detections['detection_scores'][0]):
+        if detection_score > 0.8:
+            # same as in "11. Auto-Labeling" of "2. Training and Detection"
+            scanned_object_detection_box = detections['detection_boxes'][0][index]
+            ymin = round(float(scanned_object_detection_box[0] * imgHeight))
+            xmin = round(float(scanned_object_detection_box[1] * imgWidth))
+            ymax = round(float(scanned_object_detection_box[2] * imgHeight))
+            xmax = round(float(scanned_object_detection_box[3] * imgWidth))
+            formated_scanned_object_detection_box = {
+                "ymin": ymin,
+                "xmin": xmin,
+                "ymax": ymax,
+                "xmax": xmax,
+                # "timestamp": datetime.timestamp(datetime.now())
+            }
+            # print(f"- bounding boxes (relative): {scanned_object_data} \n")
+
+            formatted_scanned_object_detection_boxes.append(
+                formated_scanned_object_detection_box)
+
+    return formatted_scanned_object_detection_boxes
+
+
+async def scan_for_object_in_video(print_results: bool):
+    # ValueError: 'images' must have either 3 or 4 dimensions. -> could be related to wrong source of VideoCapture!
+    cap = cv2.VideoCapture(1)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    scan_condition = cap.isOpened()
+    storaged_scanned_object_detection_boxes = []
+
+    while scan_condition:
+        # await asyncio.sleep(1)
+        ret, frame = cap.read()
+        frame_detections = get_detections_from_img(frame)
+        frame_detections_np_with_detections = visualize_detections_from_image(
+            frame,
+            frame_detections,
+            category_index,
+            min_score_thresh=min_score_thresh,
+            line_thickness=line_thickness,
+            print_results=print_results
+        )
+
+        cv2.imshow('object detection',  cv2.resize(
+            frame_detections_np_with_detections, (800, 600)))
+
+        if cv2.waitKey(10) & 0xFF == ord('q'):
+            cap.release()
+            cv2.destroyAllWindows()
+            break
+
+        formatted_scanned_object_detection_boxes = get_bounding_boxes_above_min_score_thres(
+            detections=frame_detections, imgHeight=height, imgWidth=width)
+
+        print(
+            f"formatted_scanned_object_detection_boxes {formatted_scanned_object_detection_boxes}")
+
+#         if len(formatted_scanned_object_detection_boxes) > len(storaged_scanned_object_detection_boxes):
+#             storaged_scanned_object_detection_boxes = formatted_scanned_object_detection_boxes.copy()
+
+#         print("CHECKING NEW SCAN")
+#         # check local storage
+#         for formatted_scanned_object_detection_box in formatted_scanned_object_detection_boxes:
+#             for storaged_scanned_object_detection_box in storaged_scanned_object_detection_boxes:
+#                 print(f"formated_scanned_object_detection_box['ymin']: {formated_scanned_object_detection_box['ymin']}")
+#                 print(f"storaged_scanned_object_detection_box['ymin']: {storaged_scanned_object_detection_box['ymin']}")
+
+#                 # find object which already exist in storage
+#                 if formated_scanned_object_detection_box['ymin'] > storaged_scanned_object_detection_box['ymin'] - 5 and formated_scanned_object_detection_box['ymin'] < storaged_scanned_object_detection_box['ymin'] + 5:
+#                     print(f"Object with the coordinates x: {formated_scanned_object_detection_box['xmin']} and y: {formated_scanned_object_detection_box['ymin']} already exist.")
+
+#                     # Find out if object has been moved
+#                     print(storaged_scanned_object_detection_box['ymin'] - formated_scanned_object_detection_box['ymin'])
+
+#         print(f"storaged_scanned_object_detection_boxes count: {len(storaged_scanned_object_detection_boxes)}")
+#         print(f"storaged_scanned_object_detection_boxes: {storaged_scanned_object_detection_boxes}")
+
+
+#         # get all miro board items
+        board_items = await asyncio.create_task(get_all_items())
+
+        # compare miro board item count with real world item count
+        # add missing items to miro board
+        board_items_count = len(board_items)
+        last_index = len(formatted_scanned_object_detection_boxes)
+        print(f"Identify {board_items_count} miro sticky note widgets from the scanned {len(formatted_scanned_object_detection_boxes)} sticky notes in real world")
+
+        await asyncio.create_task(delete_all_items())
+        while board_items_count < len(formatted_scanned_object_detection_boxes):
+            if len(formatted_scanned_object_detection_boxes) > 0:
+                await asyncio.create_task(create_item(formatted_scanned_object_detection_boxes[last_index - 1]))
+                last_index = last_index - 1
+                board_items_count = board_items_count + 1
+
+
+#                 for data in scanned_object_data_list:
+#                     if scanned_object_data['ymin'] > data['ymin'] - 5 and scanned_object_data['ymin'] < data['ymin'] + 5:
+#                         print("TRUE")
+
+# #                 if scanned_object_data in scanned_object_data_list:
+# #                     print(f"Object {scanned_object_data} already exist.")
+# #                 else:
+# #                     scanned_object_data_list.append(scanned_object_data)
+# #                     await asyncio.create_task(create_item(scanned_object_data))
+# #                     print(f"Added scanned_object_data {scanned_object_data} to the list and created it on miro board.")
+
+
+#         print(scanned_object_data_list)
+#         # store scanned_object_positions, if not already stores
+#         # detect changes in scanned_object_positions
+#         # Get all items on board
+#         # Check if some items exist in real-world, which are missing on miro board
+# #         await asyncio.create_task(create_all_items(scanned_object_data_list))
+
+    return storaged_scanned_object_detection_boxes
