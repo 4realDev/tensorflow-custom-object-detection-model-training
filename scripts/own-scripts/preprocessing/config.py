@@ -35,21 +35,21 @@ r""" Changing something on the config please re-run all the scripts to create a 
 import os
 
 # labels the custom model detects
-labels = [{'name': 'yellow_sticky_note', 'id': 1},
-          {'name': 'blue_sticky_note', 'id': 2},
-          {'name': 'pink_sticky_note', 'id': 3},
-          {'name': 'green_sticky_note', 'id': 4}]
+labels = [{'name': 'yellow_sticky_note', 'id': 1, 'color': 'yellow'},
+          {'name': 'blue_sticky_note', 'id': 2, 'color': 'blue'},
+          {'name': 'pink_sticky_note', 'id': 3, 'color': 'pink'},
+          {'name': 'green_sticky_note', 'id': 4, 'color': 'green'}]
 
 # vars necessary for pipeline.config adjustments and for model training
 num_classes = len(labels)
 batch_size = 4
-num_steps = 10000
-num_eval_steps = 1000
+num_steps = 25000
 fine_tune_checkpoint_type = "detection"  # "classification" or "detection"
 
 # file names
 PRETRAINED_MODEL_NAME = 'ssd_resnet50_v1_fpn_640x640_coco17_tpu-8'
-CUSTOM_MODEL_NAME = f'my_sticky_notes_{PRETRAINED_MODEL_NAME}_{str(num_steps)}'
+CUSTOM_MODEL_NAME_SUFFIX = 'my_sticky_notes'
+CUSTOM_MODEL_NAME = f'{CUSTOM_MODEL_NAME_SUFFIX}_{PRETRAINED_MODEL_NAME}_{str(num_steps)}'
 PRETRAINED_MODEL_URL = 'http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8.tar.gz'
 LABEL_MAP_NAME = 'label_map.pbtxt'
 TF_RECORD_SCRIPT_NAME = 'generate_tfrecord.py'
@@ -60,11 +60,13 @@ BASE_PATH = 'C:\\_WORK\GitHub\\_data-science'   # necessary for cmd commands
 
 # paths to folders
 paths = {
-    'OWN_SCRIPTS_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'scripts', 'own-scripts'),
+    'OWN_SCRIPTS_PREPROCESSING_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'scripts', 'own-scripts', 'preprocessing'),
+    'OWN_SCRIPTS_STICKY_NOTES_DETECTION_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'scripts', 'own-scripts', 'sticky-notes-detection'),
     'TFOD_TUTORIAL_SCRIPTS_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'scripts', 'tfod-tutorial-scripts'),
     'TFOD_API_SCRIPTS_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'scripts', 'tfod-api-scripts'),
     'APIMODEL_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'tensorflow-model-garden'),
     'EXECUTABLES_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'executables'),
+    'MIRO_TIMEFRAME_SNAPSHOTS': os.path.join(BASE_PATH, 'Tensorflow', 'miro-timeframe-snapshots'),
     'ANNOTATION_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'workspace', CUSTOM_MODEL_NAME, 'annotations'),
     'IMAGE_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'workspace', CUSTOM_MODEL_NAME, 'images'),
     'LABELIMG_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'addons', 'labelimg'),

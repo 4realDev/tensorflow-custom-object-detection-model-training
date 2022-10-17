@@ -1,4 +1,5 @@
 import os   # Import Operating System
+# pip install wget
 import wget  # To download tensorflow pretrained model from github repo
 import tensorflow as tf
 
@@ -162,7 +163,7 @@ def main():
     # copy TensorFlow\models\research\object_detection\model_main_tf2.py into TensorFlow\scripts for model training and evaluation
     copy_source_file_into_dest_folder(
         files['TRAINING_AND_EVAL_SCRIPT'], paths['TFOD_API_SCRIPTS_PATH'])
-    
+
     # copy TensorFlow\models\research\object_detection\export_main_tf2.py into TensorFlow\scripts for model export
     copy_source_file_into_dest_folder(
         files['EXPORTING_SCRIPT'], paths['TFOD_API_SCRIPTS_PATH'])

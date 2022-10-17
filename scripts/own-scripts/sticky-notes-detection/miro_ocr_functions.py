@@ -1,5 +1,8 @@
 
 
+from dataclasses import dataclass
+import numpy as np
+from PIL import Image
 from datetime import date, datetime
 import os
 from random import random
@@ -8,6 +11,7 @@ import matplotlib.pyplot as plt
 from paddleocr import PaddleOCR
 import asyncio
 import nest_asyncio
+import config
 nest_asyncio.apply()
 
 
@@ -43,6 +47,8 @@ nest_asyncio.apply()
 img_path = 'C:\_WORK\\GitHub\_data-science\TFODCourse\sticky_notes_test_images\single_difficult.jpg'
 ocr_model = PaddleOCR(lang='german')
 ocr_confidence_threshold = 0.50
+
+paths = config.paths
 
 
 def morphology_closing_operation(img):
@@ -92,7 +98,7 @@ def morphology_opening_operation(img):
 # Extract text from images
 
 
-def get_timestamp_yyyy_mm_dd_hh_mm_ss():
+def get_timestamp_yyyy_mm_dd_hh_mm_ss() -> str:
     return (str(date.today().year) + '-' +
             str(date.today().month).zfill(2) + '-' +
             str(date.today().day).zfill(2) + '-' +
@@ -101,9 +107,15 @@ def get_timestamp_yyyy_mm_dd_hh_mm_ss():
             str(datetime.now().second))
 
 
-def create_timestamp_folder_for_recognized_images(timestamp):
+def create_timestamp_folder_and_return_its_path(timestamp: str) -> str:
     # TODO: Create folder path in config specifically for those timestamp backups
-    recognized_images_timestamp_folder_path = f"C:\\Users\\vbraz\\Desktop\\sticky-notes-downloaded-images\\{timestamp}"
+    recognized_images_timestamp_folder_path: str = os.path.join(
+        paths['MIRO_TIMEFRAME_SNAPSHOTS'], timestamp)
+    # f"C:\\Users\\vbraz\\Desktop\\sticky-notes-downloaded-images\\IMAGE_DATA_STICKY_NOTES\\{timestamp}"
+
+    # TODO: FIND BETTER FOLDER STRUCTURE LOGIC
+    if not os.path.exists(paths['MIRO_TIMEFRAME_SNAPSHOTS']):
+        os.mkdir(paths['MIRO_TIMEFRAME_SNAPSHOTS'])
 
     if not os.path.exists(recognized_images_timestamp_folder_path):
         os.mkdir(recognized_images_timestamp_folder_path)
@@ -111,10 +123,10 @@ def create_timestamp_folder_for_recognized_images(timestamp):
     return recognized_images_timestamp_folder_path
 
 
-def save_image_with_timestamp(img, img_file_path: str, timestamp: str, timestamped_folder_path: str, suffix=""):
+def save_image_with_timestamp(img: np.ndarray, img_file_path: str, timestamp: str, timestamped_folder_path: str, suffix="") -> None:
     if os.path.isfile(img_file_path):
-        original_image_with_timestamp_name = f"{timestamp}{suffix}.png"
-        result = cv2.imwrite(os.path.join(
+        original_image_with_timestamp_name: str = f"{timestamp}{suffix}.png"
+        result: bool = cv2.imwrite(os.path.join(
             timestamped_folder_path, original_image_with_timestamp_name), img)
 
         if result == True:
@@ -125,8 +137,16 @@ def save_image_with_timestamp(img, img_file_path: str, timestamp: str, timestamp
                 f"Error in saving file {original_image_with_timestamp_name}")
 
 
+# def get_dominant_color(pil_img):
+#     img = pil_img.copy()
+#     img = img.convert("RGBA")
+#     img = img.resize((1, 1), resample=0)
+#     dominant_color = img.getpixel((0, 0))
+#     return dominant_color
+
+
 def crop_and_save_recognized_images(
-        img,
+        img: np.ndarray,
         img_detection_bounding_boxes,
         timestamped_folder_path: str):
 
@@ -137,16 +157,37 @@ def crop_and_save_recognized_images(
         ymax = img_detection_bounding_box['ymax']
         xmin = img_detection_bounding_box['xmin']
         xmax = img_detection_bounding_box['xmax']
+        color = img_detection_bounding_box['color']
 
         cropped_img_according_to_its_bounding_box = img[ymin:ymax, xmin:xmax]
+
+        # img_file_path = "C:\\Users\\vbraz\\Desktop\\IMAGE_DATA_STICKY_NOTES\\randy-bachelor-sticky-notes-images\\IMG_0270.JPG"
+        # pilImg = Image.open(img_file_path)
+        # cropped_img_according_to_its_bounding_box = pilImg.crop(
+        #     (ymin, ymax, xmin, xmax))
+        # dominent_color = get_dominant_color(
+        #     cropped_img_according_to_its_bounding_box)
+        # print(dominent_color)
+
+        # data = np.reshape(cropped_img_according_to_its_bounding_box, (-1, 3))
+        # print(data.shape)
+        # data = np.float32(data)
+        # criteria = (cv2.TERM_CRITERIA_EPS +
+        #             cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        # flags = cv2.KMEANS_RANDOM_CENTERS
+        # compactness, labels, centers = cv2.kmeans(
+        #     data, 1, None, criteria, 10, flags)
+
+        # print('Dominant color is: bgr({})'.format(centers[0].astype(np.int32)))
 
         cropped_img_according_to_its_bounding_box_name = f"cropped_image_{index}.png"
 
         cropped_images_data.append(
             {
                 "position": {"ymin": ymin, "xmin": xmin, "ymax": ymax, "xmax": xmax},
+                "color": color,
                 "name": cropped_img_according_to_its_bounding_box_name,
-                "ocr_recognized_text": ""
+                "ocr_recognized_text": "",
             })
 
         result = cv2.imwrite(os.path.join(
@@ -164,11 +205,13 @@ def crop_and_save_recognized_images(
 
 def remove_forbidden_ascii_characters(string):
     forbidden_characters = ['<', '>', ':',
-                            '"', '/', '\\', '|', '?', '*']
+                            '"', "\'", '/', '\\', '|', '?', '*']
     for forbidden_character in forbidden_characters:
         if forbidden_character in string:
             string = string.replace(
                 forbidden_character, "")
+
+    return string
 
 
 async def get_image_text_data_by_ocr_for_each_file_in_timestamped_folder_and_save_it(cropped_images_data: list, timestamped_folder_path: str, ocr_confidence_threshold=0.5, visualize_text_in_image=False):
@@ -194,8 +237,9 @@ async def get_image_text_data_by_ocr_for_each_file_in_timestamped_folder_and_sav
             print(new_image_file_name)
 
             # remove forbidden printable ASCII characters from file name:
-            # < > : " / \ | ? *
-            remove_forbidden_ascii_characters(new_image_file_name)
+            # < > : " / \ | ? * '
+            new_image_file_name = remove_forbidden_ascii_characters(
+                new_image_file_name)
 
             print(new_image_file_name)
             new_image_file_name_with_ocr_information = os.path.join(
@@ -261,7 +305,9 @@ async def get_image_text_data_by_ocr(img_path, ocr_confidence_threshold=ocr_conf
                 int(boxes[i][3][1]))
 
             text_and_boxes_array.append(
-                {"position": {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax}, "text": texts[i]})
+                {"position": {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax},
+                 "text": texts[i]}
+            )
 
             if visualize_text_in_image:
                 img = cv2.rectangle(

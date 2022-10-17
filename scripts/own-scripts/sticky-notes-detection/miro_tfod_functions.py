@@ -3,6 +3,11 @@
 # pip install nest-asyncio
 # cd Tensorflow\scripts & python miro-sticky-notes-sync.py
 
+from dataclasses import dataclass
+import re
+from os import listdir
+from os.path import isfile, join
+from attr import Attribute
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
@@ -36,7 +41,7 @@ detection_model = model_builder.build(
 category_index = label_map_util.create_category_index_from_labelmap(
     files['LABELMAP'])
 
-min_score_thresh = 0.8
+min_score_thresh = 0.95
 line_thickness = 10
 
 
@@ -50,13 +55,27 @@ def detect_fn(image):
 
 
 # LOAD THE LATEST CHECKPOINT OF THE OBJECT DETECTION MODEL
-# Seems to be necessary for any visual detection
-# TODO: find automatically the highest ckpt and set it
+# Necessary for any visual detection
+def get_maximum_trained_model_checkpoint():
+    maximum_ckpt_number = -1
+    for file in listdir(paths['CUSTOM_MODEL_PATH']):
+        try:
+            file_ckpt_number = int(
+                re.search(r'ckpt-(.*).index', file).group(1))
+            if maximum_ckpt_number == -1:
+                maximum_ckpt_number = file_ckpt_number
+            if maximum_ckpt_number < file_ckpt_number:
+                maximum_ckpt_number = file_ckpt_number
+        except AttributeError:
+            continue
+    return maximum_ckpt_number
+
+
 def load_latest_checkpoint_of_custom_object_detection_model():
-    # Restore checkpoint
+    maximum_ckpt_number = get_maximum_trained_model_checkpoint()
     ckpt = tf.compat.v2.train.Checkpoint(model=detection_model)
     ckpt.restore(os.path.join(
-        paths['CUSTOM_MODEL_PATH'], 'ckpt-11')).expect_partial()
+        paths['CUSTOM_MODEL_PATH'], f"ckpt-{maximum_ckpt_number}")).expect_partial()
 
 
 def get_detections_from_img(image):
@@ -86,6 +105,8 @@ def visualize_detections_from_image(
     detections['detection_classes'] = detections['detection_classes'].astype(
         np.int64)
 
+    # necessary for detections['detection_classes']
+    # because label ids start with 1 and detections['detection_classes'] start with 0
     label_id_offset = 1
     image_np_with_detections = image_np.copy()
 
@@ -105,7 +126,8 @@ def visualize_detections_from_image(
         # TODO: plt.show seems not to work, replace it with cv2.imshow?
         # plt.imshow(cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB))
         # plt.show()
-        cv2.imshow("TEST", image_np_with_detections)
+        cv2.imshow("Visualize bounding-box detections in image",
+                   image_np_with_detections)
         # waits for user to press any key
         # (this is necessary to avoid Python kernel form crashing)
         cv2.waitKey(0)
@@ -123,17 +145,27 @@ def get_bounding_boxes_above_min_score_thres(detections, imgHeight, imgWidth):
         if detection_score > 0.8:
             # same as in "11. Auto-Labeling" of "2. Training and Detection"
             scanned_object_detection_box = detections['detection_boxes'][0][index]
+            scanned_object_class = int(
+                detections['detection_classes'][0][index] + 1)
             ymin = round(float(scanned_object_detection_box[0] * imgHeight))
             xmin = round(float(scanned_object_detection_box[1] * imgWidth))
             ymax = round(float(scanned_object_detection_box[2] * imgHeight))
             xmax = round(float(scanned_object_detection_box[3] * imgWidth))
+
+            formated_scanned_object_label = list(
+                filter(lambda label: (
+                    label['id'] == scanned_object_class), config.labels)
+            )
+
             formated_scanned_object_detection_box = {
                 "ymin": ymin,
                 "xmin": xmin,
                 "ymax": ymax,
                 "xmax": xmax,
+                "color": formated_scanned_object_label[0]['color']
                 # "timestamp": datetime.timestamp(datetime.now())
             }
+
             # print(f"- bounding boxes (relative): {scanned_object_data} \n")
 
             formatted_scanned_object_detection_boxes.append(

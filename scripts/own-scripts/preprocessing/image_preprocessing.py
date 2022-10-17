@@ -70,7 +70,6 @@ async def get_image_text_data_by_ocr(img_path, ocr_confidence_threshold: float, 
     # But we want to reorder the color channel to RGB for the draw_ocd method
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
 
-    # TODO: Should array not be outside of for loop
     text_and_boxes_array = []
 
     # Visualize image and detections

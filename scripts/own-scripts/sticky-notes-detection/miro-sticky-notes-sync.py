@@ -19,6 +19,7 @@ from miro_rest_api_functions import \
     delete_all_items, \
     create_item, \
     create_frame, \
+    create_image, \
     create_all_items, \
     create_new_miro_board_or_get_existing
 
@@ -33,7 +34,7 @@ from miro_ocr_functions import \
     get_image_text_data_by_ocr, \
     save_image_with_timestamp, \
     get_timestamp_yyyy_mm_dd_hh_mm_ss, \
-    create_timestamp_folder_for_recognized_images, \
+    create_timestamp_folder_and_return_its_path, \
     crop_and_save_recognized_images, \
     get_image_text_data_by_ocr_for_each_file_in_timestamped_folder_and_save_it
 
@@ -51,14 +52,14 @@ global_board_id = None
 
 async def backup_recognized_image_data(img_file_path):
     timestamp = get_timestamp_yyyy_mm_dd_hh_mm_ss()
-    timestamped_folder_path = create_timestamp_folder_for_recognized_images(
+    timestamped_folder_path = create_timestamp_folder_and_return_its_path(
         timestamp)
     img = cv2.imread(img_file_path)
     img_detections = get_detections_from_img(img)
     img_detection_bounding_boxes = get_bounding_boxes_above_min_score_thres(
         detections=img_detections, imgHeight=img.shape[0], imgWidth=img.shape[1])
     img_with_detection_bounding_boxes = visualize_detections_from_image(
-        img, img_detections, visualize_bounding_box_detections_in_image=False)
+        img, img_detections, visualize_bounding_box_detections_in_image=True)
 
     save_image_with_timestamp(
         img, img_file_path, timestamp, timestamped_folder_path, suffix="-original")
@@ -100,12 +101,12 @@ async def main():
 
         load_latest_checkpoint_of_custom_object_detection_model()
 
-        img_file_path = "C:\\Users\\vbraz\\Desktop\\sticky-notes-downloaded-images\\extern_sticky_notes\\dd121f00743b1410cc31f6cdb20f6b14.JPG"
+        img_file_path = "C:\\Users\\vbraz\\Desktop\\IMAGE_DATA_STICKY_NOTES\\randy-bachelor-sticky-notes-images\\IMG_0264.JPG"
         try:
             with open(img_file_path) as f:
                 print("File present")
         except FileNotFoundError:
-            print('File is not present')
+            print('\n\n\nFile is not present\n\n\n')
 
         [sticky_notes_data, timestamp] = await asyncio.create_task(backup_recognized_image_data(img_file_path))
 
@@ -115,8 +116,17 @@ async def main():
         # for sticky_note_data in sticky_notes_data:
         #     print(sticky_note_data['position'])
         #     print(sticky_note_data['ocr_recognized_text'])
+
+        # TODO: Calculate average size of sticky note and set it as width and height (?)
+        # What is some is wrong recognized and influences every other - otherwise stickynotes should have equal height and width
         for sticky_note_data in sticky_notes_data:
-            await asyncio.create_task(create_item(sticky_note_data['position'], sticky_note_data['ocr_recognized_text'], board_id, session))
+            await asyncio.create_task(create_item(
+                sticky_note_data['position'],
+                sticky_note_data['color'],
+                sticky_note_data['ocr_recognized_text'],
+                board_id,
+                session)
+            )
 
         # min_x_of_sticky_notes_data = min(sticky_notes_data['position']['xmin'])
         # min_y_of_sticky_notes_data = min(sticky_notes_data['position']['ymin'])
@@ -163,7 +173,7 @@ async def main():
         #       }
         #     },
 
-        await asyncio.create_task(create_frame(0, 0, str(timestamp), frame_height, frame_width, board_id, session))
+        # await asyncio.create_task(create_frame(0, 0, str(timestamp), frame_height, frame_width, board_id, session))
 
         # visualize_detections_from_image(img, img_detections)
 
