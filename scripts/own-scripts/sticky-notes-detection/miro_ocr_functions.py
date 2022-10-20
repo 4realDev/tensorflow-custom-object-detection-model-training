@@ -12,6 +12,7 @@ from paddleocr import PaddleOCR
 import asyncio
 import nest_asyncio
 import config
+import colorsys
 nest_asyncio.apply()
 
 
@@ -45,7 +46,8 @@ nest_asyncio.apply()
 
 # VARS FOR PADDLE OCR MODEL
 img_path = 'C:\_WORK\\GitHub\_data-science\TFODCourse\sticky_notes_test_images\single_difficult.jpg'
-ocr_model = PaddleOCR(lang='german')
+# for german use 'german' -> https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.6/doc/doc_en/quickstart_en.md
+ocr_model = PaddleOCR(lang='en')
 ocr_confidence_threshold = 0.50
 
 paths = config.paths
@@ -108,7 +110,6 @@ def get_timestamp_yyyy_mm_dd_hh_mm_ss() -> str:
 
 
 def create_timestamp_folder_and_return_its_path(timestamp: str) -> str:
-    # TODO: Create folder path in config specifically for those timestamp backups
     recognized_images_timestamp_folder_path: str = os.path.join(
         paths['MIRO_TIMEFRAME_SNAPSHOTS'], timestamp)
     # f"C:\\Users\\vbraz\\Desktop\\sticky-notes-downloaded-images\\IMAGE_DATA_STICKY_NOTES\\{timestamp}"
@@ -137,14 +138,6 @@ def save_image_with_timestamp(img: np.ndarray, img_file_path: str, timestamp: st
                 f"Error in saving file {original_image_with_timestamp_name}")
 
 
-# def get_dominant_color(pil_img):
-#     img = pil_img.copy()
-#     img = img.convert("RGBA")
-#     img = img.resize((1, 1), resample=0)
-#     dominant_color = img.getpixel((0, 0))
-#     return dominant_color
-
-
 def crop_and_save_recognized_images(
         img: np.ndarray,
         img_detection_bounding_boxes,
@@ -160,25 +153,6 @@ def crop_and_save_recognized_images(
         color = img_detection_bounding_box['color']
 
         cropped_img_according_to_its_bounding_box = img[ymin:ymax, xmin:xmax]
-
-        # img_file_path = "C:\\Users\\vbraz\\Desktop\\IMAGE_DATA_STICKY_NOTES\\randy-bachelor-sticky-notes-images\\IMG_0270.JPG"
-        # pilImg = Image.open(img_file_path)
-        # cropped_img_according_to_its_bounding_box = pilImg.crop(
-        #     (ymin, ymax, xmin, xmax))
-        # dominent_color = get_dominant_color(
-        #     cropped_img_according_to_its_bounding_box)
-        # print(dominent_color)
-
-        # data = np.reshape(cropped_img_according_to_its_bounding_box, (-1, 3))
-        # print(data.shape)
-        # data = np.float32(data)
-        # criteria = (cv2.TERM_CRITERIA_EPS +
-        #             cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-        # flags = cv2.KMEANS_RANDOM_CENTERS
-        # compactness, labels, centers = cv2.kmeans(
-        #     data, 1, None, criteria, 10, flags)
-
-        # print('Dominant color is: bgr({})'.format(centers[0].astype(np.int32)))
 
         cropped_img_according_to_its_bounding_box_name = f"cropped_image_{index}.png"
 
@@ -214,43 +188,75 @@ def remove_forbidden_ascii_characters(string):
     return string
 
 
+def rgb_to_hsv(r, g, b):
+    temp = colorsys.rgb_to_hsv(r, g, b)
+    h = int(temp[0] * 360)
+    s = int(temp[1] * 100)
+    v = round(temp[2] * 100 / 255)
+    return [h, s, v]
+
+# resize image down to 1 pixel.
+
+
+def get_dominant_color(img_path):
+    img = Image.open(img_path)
+    img = img.convert("RGB")
+    img = img.resize((1, 1), resample=0)
+    dominant_color = img.getpixel((0, 0))
+
+    cropped_img_dominant_color_hsv = rgb_to_hsv(dominant_color[0],
+                                                dominant_color[1], dominant_color[2])
+
+    color_class = None
+    hue = cropped_img_dominant_color_hsv[0]
+
+    if hue > 10 and hue < 100:
+        color_class = "yellow"
+    elif hue > 100 and hue < 180:
+        color_class = "green"
+    elif hue > 180 and hue < 290:
+        color_class = "blue"
+    elif hue > 290 or hue > 0 and hue < 10:
+        color_class = "pink"
+
+    return color_class
+
+
 async def get_image_text_data_by_ocr_for_each_file_in_timestamped_folder_and_save_it(cropped_images_data: list, timestamped_folder_path: str, ocr_confidence_threshold=0.5, visualize_text_in_image=False):
     for index, cropped_image_data in enumerate(cropped_images_data):
         image_file_path = os.path.join(
             timestamped_folder_path, cropped_image_data['name'])
         # checking if it is a file
         if os.path.isfile(image_file_path):
-            image_ocr_data_array = await asyncio.create_task(get_image_text_data_by_ocr(image_file_path, ocr_confidence_threshold, visualize_text_in_image=visualize_text_in_image))
+            image_ocr_data_array = await asyncio.create_task(get_image_text_data_by_ocr(image_file_path, ocr_confidence_threshold, visualize_text_in_image=False))
             image_with_ocr_data_visualization = image_ocr_data_array[1]
-            # TODO: Ensure that order of words is correct -> maybe sort after x-y index
-            # TODO: Find out why color of the saved file is still black and not white
-            # TODO: Find out, why color does not change
             cv2.imwrite(image_file_path, image_with_ocr_data_visualization)
 
             # get every ocr bounding box and create a string collecting all ocr bounding boxes
             image_ocr_text = ""
             for image_ocr_data in image_ocr_data_array[0]:
                 image_ocr_text = image_ocr_text + \
-                    " " + image_ocr_data['text']
+                    image_ocr_data['text'] + " "
 
-            new_image_file_name = f"{index}_{image_ocr_text}.png"
-            print(new_image_file_name)
+            new_image_file_name = f"{index}_{image_ocr_text}"
 
             # remove forbidden printable ASCII characters from file name:
             # < > : " / \ | ? * '
             new_image_file_name = remove_forbidden_ascii_characters(
                 new_image_file_name)
 
-            print(new_image_file_name)
-            new_image_file_name_with_ocr_information = os.path.join(
-                timestamped_folder_path, new_image_file_name)
-            print(image_file_path)
-            print(new_image_file_name_with_ocr_information)
-            os.rename(image_file_path, new_image_file_name_with_ocr_information)
+            new_image_file_name_with_ocr_information_path = os.path.join(
+                timestamped_folder_path, f"{new_image_file_name}.png")
+
+            os.rename(image_file_path,
+                      new_image_file_name_with_ocr_information_path)
 
             # override name with the new one
-            cropped_image_data['name'] = image_ocr_text
+            cropped_image_data['name'] = new_image_file_name
             cropped_image_data['ocr_recognized_text'] = image_ocr_text
+            cropped_image_data['color'] = get_dominant_color(
+                new_image_file_name_with_ocr_information_path)
+            cropped_image_data['path'] = new_image_file_name_with_ocr_information_path
 
     if visualize_text_in_image:
         cv2.waitKey(0)
@@ -289,9 +295,10 @@ async def get_image_text_data_by_ocr(img_path, ocr_confidence_threshold=ocr_conf
     # Import image
     img = cv2.imread(img_path)
 
+    # TODO: FIND OUT IF CONVERTION IS REALLY NEEDED - MESSES UP SAVED FILES
     # By default if we import image using openCV, the image will be in BGR
     # But we want to reorder the color channel to RGB for the draw_ocd method
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
 
     text_and_boxes_array = []
 

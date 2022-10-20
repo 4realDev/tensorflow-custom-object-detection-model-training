@@ -3,11 +3,9 @@
 # pip install nest-asyncio
 # cd Tensorflow\scripts & python miro-sticky-notes-sync.py
 
-from dataclasses import dataclass
 import re
 from os import listdir
 from os.path import isfile, join
-from attr import Attribute
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
@@ -19,7 +17,13 @@ from object_detection.utils import label_map_util
 import tensorflow as tf
 
 import config
-from miro_rest_api_functions import get_all_miro_board_names_and_ids, get_all_items, delete_item, delete_all_items, create_item, create_all_items, create_new_miro_board_or_get_existing
+from miro_rest_api_functions import \
+    get_all_miro_board_names_and_ids, \
+    get_all_items, delete_item, \
+    delete_all_items, \
+    create_item, \
+    create_all_items, \
+    create_new_miro_board_or_get_existing
 
 import aiohttp
 import asyncio
@@ -41,7 +45,7 @@ detection_model = model_builder.build(
 category_index = label_map_util.create_category_index_from_labelmap(
     files['LABELMAP'])
 
-min_score_thresh = 0.95
+min_score_thresh = 0.9
 line_thickness = 10
 
 

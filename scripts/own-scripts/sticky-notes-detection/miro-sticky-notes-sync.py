@@ -50,16 +50,19 @@ global_session = None
 global_board_id = None
 
 
-async def backup_recognized_image_data(img_file_path):
+async def get_recognized_sticky_notes_data(img_file_path):
     timestamp = get_timestamp_yyyy_mm_dd_hh_mm_ss()
     timestamped_folder_path = create_timestamp_folder_and_return_its_path(
         timestamp)
     img = cv2.imread(img_file_path)
+
     img_detections = get_detections_from_img(img)
+
     img_detection_bounding_boxes = get_bounding_boxes_above_min_score_thres(
         detections=img_detections, imgHeight=img.shape[0], imgWidth=img.shape[1])
+
     img_with_detection_bounding_boxes = visualize_detections_from_image(
-        img, img_detections, visualize_bounding_box_detections_in_image=True)
+        img, img_detections, visualize_bounding_box_detections_in_image=False)
 
     save_image_with_timestamp(
         img, img_file_path, timestamp, timestamped_folder_path, suffix="-original")
@@ -88,52 +91,115 @@ async def backup_recognized_image_data(img_file_path):
 
 async def main():
     async with aiohttp.ClientSession() as session:
-        global global_session
-        global global_board_id
-        global_session = session
-
-        # board_id = await asyncio.create_task(create_new_miro_board_or_get_existing(board_name, board_description))
-        # print(f"board_id: {cropped_imageboard_id}")
-        # global_board_id = board_id
-
-#         board_items = await asyncio.create_task(get_all_items(board_id))
-#         print(f"board_items: {board_items}")
-
         load_latest_checkpoint_of_custom_object_detection_model()
 
-        img_file_path = "C:\\Users\\vbraz\\Desktop\\IMAGE_DATA_STICKY_NOTES\\randy-bachelor-sticky-notes-images\\IMG_0264.JPG"
+        # TODO: Remove/Replace Code when start testing with Video Frames
+        img_file_path = r"C:\Users\vbraz\Desktop\IMAGE_DATA_STICKY_NOTES\cando-dropbox-sticky-notes-images\only-yellow\IMG_8693.JPEG"
         try:
             with open(img_file_path) as f:
                 print("File present")
         except FileNotFoundError:
             print('\n\n\nFile is not present\n\n\n')
 
-        [sticky_notes_data, timestamp] = await asyncio.create_task(backup_recognized_image_data(img_file_path))
+        # Use TFOD, PaddleOCR, and cv2 logic to get the recognized sticky notes in the image with their:
+        # bounding-box position         | sticky_note_data['position'] -> {"xmin": int, "xmax": int, "ymin": int, "ymax": int}
+        # recognized color              | sticky_note_data['color'] -> str
+        # detected ocr-text             | sticky_note_data['ocr_recognized_text'] -> str
+        # path where image was saved    | sticky_note_data['path'] -> str
+        # file name of saved image      | sticky_note_data['name'] -> str
+        [sticky_notes_data, timestamp] = await asyncio.create_task(get_recognized_sticky_notes_data(img_file_path))
 
+        # Create miro board or get id of exsting one, if timestamp name already exists
         board_id = await asyncio.create_task(create_new_miro_board_or_get_existing(name=timestamp, description=timestamp, session=session))
         print(f"board_id: {board_id}")
-        # global_board_id = board_id
-        # for sticky_note_data in sticky_notes_data:
-        #     print(sticky_note_data['position'])
-        #     print(sticky_note_data['ocr_recognized_text'])
 
-        # TODO: Calculate average size of sticky note and set it as width and height (?)
-        # What is some is wrong recognized and influences every other - otherwise stickynotes should have equal height and width
+        # Calculate average sticky note size for miro board
+        average_sticky_note_width = 0
+        for sticky_note_data in sticky_notes_data:
+            sticky_note_width = sticky_note_data['position']['xmax'] - \
+                sticky_note_data['position']['xmin']
+            average_sticky_note_width += sticky_note_width
+
+        average_sticky_note_width = average_sticky_note_width / \
+            len(sticky_notes_data)
+
+        # Get top left and bottom right position of all sticky notes objects
+        # in sticky_notes_data the bounding boxes differ in size, therefore their ymax and xmax differ from what we would expect in miro
+        # to normalize the size of the xmax and ymax, we use the maximum xmin value and add the average_sticky_note_width
+        # fmt: off
+        min_xmin_of_sticky_notes_data = min([sticky_note_data['position']['xmin'] for sticky_note_data in sticky_notes_data])
+        min_ymin_of_sticky_notes_data = min([sticky_note_data['position']['ymin'] for sticky_note_data in sticky_notes_data])
+        max_xmax_of_sticky_notes_data = max([sticky_note_data['position']['xmin'] for sticky_note_data in sticky_notes_data]) + average_sticky_note_width
+        max_ymax_of_sticky_notes_data = max([sticky_note_data['position']['ymin'] for sticky_note_data in sticky_notes_data]) + average_sticky_note_width
+        frame_height = max_ymax_of_sticky_notes_data - min_ymin_of_sticky_notes_data
+        frame_width = max_xmax_of_sticky_notes_data - min_xmin_of_sticky_notes_data
+        print(min_xmin_of_sticky_notes_data, min_ymin_of_sticky_notes_data, max_xmax_of_sticky_notes_data, max_ymax_of_sticky_notes_data)
+        print(frame_height, frame_width)
+
+        # Create frame for this timestamp for store all sticky notes inside
+        img = cv2.imread(img_file_path)
+        comparison_img_aspect_ratio: float = img.shape[1] / img.shape[0]
+        comparison_image_width: int = frame_height
+        comparison_img_height: int = comparison_image_width / comparison_img_aspect_ratio
+        padding_between_stickies_and_comparison_image: int = 100
+
+        frame_id = await asyncio.create_task(create_frame(
+            min_xmin_of_sticky_notes_data,
+            min_ymin_of_sticky_notes_data,
+            str(timestamp),
+            frame_height,
+            frame_width + comparison_image_width + padding_between_stickies_and_comparison_image,
+            board_id,
+            session
+        ))
+
+        # fmt: off
         for sticky_note_data in sticky_notes_data:
             await asyncio.create_task(create_item(
-                sticky_note_data['position'],
+                sticky_note_data['position']['xmin'] - min_xmin_of_sticky_notes_data + average_sticky_note_width/2,
+                sticky_note_data['position']['ymin'] - min_ymin_of_sticky_notes_data + average_sticky_note_width/2,
+                average_sticky_note_width,
                 sticky_note_data['color'],
                 sticky_note_data['ocr_recognized_text'],
                 board_id,
+                frame_id,
                 session)
             )
+        # fmt: on
 
-        # min_x_of_sticky_notes_data = min(sticky_notes_data['position']['xmin'])
-        # min_y_of_sticky_notes_data = min(sticky_notes_data['position']['ymin'])
-        # max_x_of_sticky_notes_data = min(sticky_notes_data['position']['xmax'])
-        # max_y_of_sticky_notes_data = min(sticky_notes_data['position']['ymax'])
-        # frame_height = max_y_of_sticky_notes_data - min_y_of_sticky_notes_data
-        # frame_width = max_x_of_sticky_notes_data - min_x_of_sticky_notes_data
+        # for sticky_note_data in sticky_notes_data:
+        #     await asyncio.create_task(create_image(
+        #         sticky_note_data['position']['xmin],
+        #         sticky_note_data['position']['ymin],
+        #         average_sticky_note_width,
+        #         sticky_note_data['name'],
+        #         sticky_note_data['path'],
+        #         board_id,
+        #         frame_id,
+        #         session)
+        #     )
+        print(f"aspect ratio: {comparison_img_aspect_ratio}")
+        print(f"width: {comparison_image_width}")   # 2348.4166666666674
+        print(f"height: {comparison_img_height}")   # 1761.3125
+
+        await asyncio.create_task(create_image(
+            image_pos_x=frame_width + padding_between_stickies_and_comparison_image +
+            comparison_image_width/2,
+            image_pos_y=comparison_img_height/2,
+            width=comparison_image_width,
+            image_name=f"{timestamp}-full-image",
+            image_path=img_file_path,
+            board_id=board_id,
+            parent_id=frame_id,
+            session=session)
+        )
+
+        # min_xmin_of_sticky_notes_data = min(sticky_notes_data['position']['xmin'])
+        # min_ymin_of_sticky_notes_data = min(sticky_notes_data['position']['ymin'])
+        # max_xmax_of_sticky_notes_data = min(sticky_notes_data['position']['xmax'])
+        # max_ymax_of_sticky_notes_data = min(sticky_notes_data['position']['ymax'])
+        # frame_height = max_ymax_of_sticky_notes_data - min_ymin_of_sticky_notes_data
+        # frame_width = max_xmax_of_sticky_notes_data - min_xmin_of_sticky_notes_data
         # frames_data = await asyncio.create_task(get_all_items("frame"))
         # frame_exists = is_frame_with_todays_timestamp_existing(
         #     frames_data, timestamp)
@@ -172,8 +238,6 @@ async def main():
         #         "relativeTo": "canvas_center"
         #       }
         #     },
-
-        # await asyncio.create_task(create_frame(0, 0, str(timestamp), frame_height, frame_width, board_id, session))
 
         # visualize_detections_from_image(img, img_detections)
 

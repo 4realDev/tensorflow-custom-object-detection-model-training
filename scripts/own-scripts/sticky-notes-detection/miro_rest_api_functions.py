@@ -1,5 +1,9 @@
 # pip install requests
 
+from aiohttp import FormData
+from sklearn.feature_extraction import img_to_graph
+import config
+import os
 from typing import Dict, List, Tuple
 from dataclasses import dataclass
 import json
@@ -14,7 +18,7 @@ nest_asyncio.apply()
 
 # VARS FOR MIRO REST API
 DEBUG_PRINT_RESPONSES = False
-auth_token = "eyJtaXJvLm9yaWdpbiI6ImV1MDEifQ_Bw1UPxNElmWbBGy8MfSWWJWOCLs"
+auth_token = "eyJtaXJvLm9yaWdpbiI6ImV1MDEifQ_N9OybOclP4WmwOKCNUjVuVMDshE"
 headers = {
     "Accept": "application/json",
     "Content-Type": "application/json",
@@ -126,13 +130,18 @@ async def create_frame(
         if DEBUG_PRINT_RESPONSES:
             print(await resp.text())
 
+        return response['id']
+
 
 # CREATE ITEM
 async def create_item(
-    sticky_note_position,
+    sticky_note_pos_x,
+    sticky_note_pos_y,
+    average_sticky_note_width: int,
     color: str,
     sticky_note_text: str,
     board_id: str,
+    parent_id,
     session
 ):
     url = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D')}/sticky_notes"
@@ -144,50 +153,66 @@ async def create_item(
         "style": {"fillColor": color},
         "position": {
             "origin": "center",
-            "x": sticky_note_position['xmin'],
-            "y": sticky_note_position['ymin']
+            "x": sticky_note_pos_x,
+            "y": sticky_note_pos_y
         },
         "geometry": {
             #             "height": sticky_note_position['ymax'] - sticky_note_position['ymin'],
-            "width": sticky_note_position['xmax'] - sticky_note_position['xmin']
-        }
+            "width": average_sticky_note_width
+        },
+        "parent": {"id": parent_id}
     }
 
-    async with session.post(url, json=payload, headers=headers) as resp:
+    async with session.post(url=url, json=payload, headers=headers) as resp:
         response = await resp.json()
-        if DEBUG_PRINT_RESPONSES:
-            print(await resp.text())
+        # if DEBUG_PRINT_RESPONSES:
+        print(await resp.text())
 
 
 async def create_image(
-    image_position,
-    image_text: str,
+    image_pos_x,
+    image_pos_y,
+    width: int,
+    image_name: str,
+    image_path: str,
     board_id,
+    parent_id,
     session
 ):
     url = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D')}/images"
-    payload = {
-        "title": image_text,
-        "position": {
-            "origin": "center",
-            "x": image_position['xmin'],
-            "y": image_position['ymin']
-        },
-        "geometry": {
-            #             "height": sticky_note_position['ymax'] - sticky_note_position['ymin'],
-            "height": image_position['ymax'] - image_position['ymin'],
-            "width": image_position['xmax'] - image_position['xmin']
-        }
+
+    headers = {
+        "accept": "*/*",
+        "authorization": f"Bearer {auth_token}"
     }
 
-    async with session.post(url, json=payload, headers=headers) as resp:
+    payload = {
+        "title": image_name,
+        "position": {
+            "x": image_pos_x,
+            "y": image_pos_y,
+            "origin": "center"
+        },
+        "geometry": {
+            "height": width,
+            "rotation": 0
+        },
+        "parent": {"id": parent_id}
+    }
+
+    # fmt: off
+    data = FormData()
+    data.add_field('resource', open(image_path, "rb"), filename=f'{image_name}.png', content_type="application/png")
+    data.add_field('data', json.dumps(payload), content_type="application/json")
+    # fmt: on
+
+    async with session.post(url=url,  data=data, headers=headers) as resp:
         response = await resp.json()
-        if DEBUG_PRINT_RESPONSES:
-            print(await resp.text())
+        # if DEBUG_PRINT_RESPONSES:
+        print(await resp.text())
+
 
 # CREATE LIST OF ITEMS
-
-
 async def create_all_items(sticky_note_positions):
     global global_session
     global global_board_id

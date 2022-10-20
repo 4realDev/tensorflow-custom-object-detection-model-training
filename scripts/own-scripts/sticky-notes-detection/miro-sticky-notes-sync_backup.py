@@ -121,7 +121,6 @@ async def get_image_text_data_by_ocr(img_path, ocr_confidence_threshold: float, 
     # But we want to reorder the color channel to RGB for the draw_ocd method
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
 
-    # TODO: Should array not be outside of for loop
     text_and_boxes_array = []
 
     # Visualize image and detections
@@ -662,7 +661,6 @@ async def main():
         # load_latest_checkpoint_of_custom_object_detection_model()
 
         # RuntimeError: (PreconditionNotMet) The third-party dynamic library (cudnn64_7.dll) that Paddle depends on is not configured correctly. (error code is 126)
-        # TODO: Try to run Paddle OCR on GPU and uninstall CPU package -> pip uninstall paddlepaddle -i https://mirror.baidu.com/pypi/simple
 
         # threshold_img_with_global_threshold(
         #     "C:\\Users\\vbraz\\Desktop\\sticky-notes-downloaded-images\\cando_sticky_notes\\image (1).png")
