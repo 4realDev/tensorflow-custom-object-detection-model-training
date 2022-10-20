@@ -94,11 +94,11 @@ async def delete_all_items(item_type: str):
 
 # CREATE FRAME
 async def create_frame(
-    frame_x: int,
-    frame_y: int,
-    frame_text: str,
-    frame_height: int,
-    frame_width: int,
+    pos_x: int,
+    pos_y: int,
+    title: str,
+    height: int,
+    width: int,
     board_id: str,
     session
 ):
@@ -106,18 +106,18 @@ async def create_frame(
     payload = {
         "data": {
             "format": "custom",
-            "title": frame_text,
+            "title": title,
             "type": "freeform"
         },
         "style": {"fillColor": "#ffffffff"},
         "position": {
             "origin": "center",
-            "x": frame_x,
-            "y": frame_y
+            "x": pos_x,
+            "y": pos_y
         },
         "geometry": {
-            "height": frame_height,
-            "width": frame_width
+            "height": height,
+            "width": width
         }
     }
 
@@ -137,11 +137,11 @@ async def create_frame(
 
 # CREATE ITEM
 async def create_item(
-    sticky_note_pos_x,
-    sticky_note_pos_y,
-    average_sticky_note_width: int,
+    pos_x,
+    pos_y,
+    width: int,
     color: str,
-    sticky_note_text: str,
+    text: str,
     board_id: str,
     parent_id,
     session
@@ -149,18 +149,17 @@ async def create_item(
     url = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D')}/sticky_notes"
     payload = {
         "data": {
-            "content": sticky_note_text,
+            "content": text,
             "shape": "square"
         },
         "style": {"fillColor": color},
         "position": {
             "origin": "center",
-            "x": sticky_note_pos_x,
-            "y": sticky_note_pos_y
+            "x": pos_x,
+            "y": pos_y
         },
         "geometry": {
-            #             "height": sticky_note_position['ymax'] - sticky_note_position['ymin'],
-            "width": average_sticky_note_width
+            "width": width
         },
         "parent": {"id": parent_id}
     }
@@ -171,12 +170,44 @@ async def create_item(
         print(await resp.text())
 
 
-async def create_image(
-    image_pos_x,
-    image_pos_y,
+def create_line(
+    pos_x,
+    pos_y,
     width: int,
-    image_name: str,
-    image_path: str,
+    height: int,
+    color: str,
+    board_id,
+    parent_id,
+    session
+):
+    url = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D')}/shapes"
+
+    payload = {
+        "data": {"shape": "round_rectangle"},
+        "style": {"fillColor": color},
+        "position": {
+            "origin": "center",
+            "x": pos_x,
+            "y": pos_y
+        },
+        "geometry": {
+            "height": height,
+            "width": width
+        },
+        "parent": {"id": parent_id}
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+
+    print(response.text)
+
+
+async def create_image(
+    pos_x,
+    pos_y,
+    width: int,
+    title: str,
+    path: str,
     board_id,
     parent_id,
     session
@@ -189,14 +220,14 @@ async def create_image(
     }
 
     payload = {
-        "title": image_name,
+        "title": title,
         "position": {
-            "x": image_pos_x,
-            "y": image_pos_y,
+            "x": pos_x,
+            "y": pos_y,
             "origin": "center"
         },
         "geometry": {
-            "height": width,
+            "width": width,
             "rotation": 0
         },
         "parent": {"id": parent_id}
@@ -204,7 +235,7 @@ async def create_image(
 
     # fmt: off
     data = FormData()
-    data.add_field('resource', open(image_path, "rb"), filename=f'{image_name}.png', content_type="application/png")
+    data.add_field('resource', open(path, "rb"), filename=f'{title}.png', content_type="application/png")
     data.add_field('data', json.dumps(payload), content_type="application/json")
     # fmt: on
 

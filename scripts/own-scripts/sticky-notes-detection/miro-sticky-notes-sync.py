@@ -23,9 +23,9 @@ from miro_rest_api_functions import \
     get_all_items, \
     delete_item, \
     delete_all_items, \
-    create_item, \
     create_frame, \
     create_item, \
+    create_line, \
     create_image, \
     create_all_items, \
     create_new_miro_board_or_get_existing
@@ -133,72 +133,97 @@ async def main():
         # in sticky_notes_data the bounding boxes differ in size, therefore their ymax and xmax differ from what we would expect in miro
         # to normalize the size of the xmax and ymax, we use the maximum xmin value and add the average_sticky_note_width
         # fmt: off
-        min_xmin_of_sticky_notes_data = min([sticky_note_data['position']['xmin'] for sticky_note_data in sticky_notes_data])
-        min_ymin_of_sticky_notes_data = min([sticky_note_data['position']['ymin'] for sticky_note_data in sticky_notes_data])
-        max_xmax_of_sticky_notes_data = max([sticky_note_data['position']['xmin'] for sticky_note_data in sticky_notes_data]) + average_sticky_note_width
-        max_ymax_of_sticky_notes_data = max([sticky_note_data['position']['ymin'] for sticky_note_data in sticky_notes_data]) + average_sticky_note_width
-        frame_height = max_ymax_of_sticky_notes_data - min_ymin_of_sticky_notes_data
-        frame_width = max_xmax_of_sticky_notes_data - min_xmin_of_sticky_notes_data
-        print(min_xmin_of_sticky_notes_data, min_ymin_of_sticky_notes_data, max_xmax_of_sticky_notes_data, max_ymax_of_sticky_notes_data)
-        print(frame_height, frame_width)
+        # min_xmin_of_sticky_notes_data = min([sticky_note_data['position']['xmin'] for sticky_note_data in sticky_notes_data])
+        # min_ymin_of_sticky_notes_data = min([sticky_note_data['position']['ymin'] for sticky_note_data in sticky_notes_data])
+        # max_xmax_of_sticky_notes_data = max([sticky_note_data['position']['xmin'] for sticky_note_data in sticky_notes_data]) + average_sticky_note_width
+        # max_ymax_of_sticky_notes_data = max([sticky_note_data['position']['ymin'] for sticky_note_data in sticky_notes_data]) + average_sticky_note_width
+        # all_sticky_notes_width = max_xmax_of_sticky_notes_data - min_xmin_of_sticky_notes_data
+
+        full_comparison_img = cv2.imread(img_file_path)
+        full_comparison_img_height = full_comparison_img.shape[0]
+        full_comparison_img_width = full_comparison_img.shape[1]
+
+        padding_between_stickies_and_comparison_image: int = 0
+        frame_width = full_comparison_img_width * 3 + padding_between_stickies_and_comparison_image * 2
 
         # Create frame for this timestamp for store all sticky notes inside
-        img = cv2.imread(img_file_path)
-        comparison_img_aspect_ratio: float = img.shape[1] / img.shape[0]
-        comparison_image_width: int = frame_height
-        comparison_img_height: int = comparison_image_width / comparison_img_aspect_ratio
-        padding_between_stickies_and_comparison_image: int = 100
+
+        # comparison_img_aspect_ratio: float = img.shape[1] / img.shape[0]
+        # comparison_image_width: int = frame_height
+        # comparison_img_height: int = comparison_image_width / comparison_img_aspect_ratio
+        # print(f"aspect ratio: {comparison_img_aspect_ratio}")
+        # print(f"width: {comparison_image_width}")   # 2348.4166666666674
+        # print(f"height: {comparison_img_height}")   # 1761.3125
 
         frame_id = await asyncio.create_task(create_frame(
-            min_xmin_of_sticky_notes_data,
-            min_ymin_of_sticky_notes_data,
-            str(timestamp),
-            frame_height,
-            frame_width + comparison_image_width + padding_between_stickies_and_comparison_image,
-            board_id,
-            session
+            pos_x = 0,
+            pos_y = 0,
+            title = str(timestamp),
+            height = full_comparison_img_height,
+            width = frame_width,
+            board_id = board_id,
+            session = session
         ))
 
-        # fmt: off
         for sticky_note_data in sticky_notes_data:
             await asyncio.create_task(create_item(
-                sticky_note_data['position']['xmin'] - min_xmin_of_sticky_notes_data + average_sticky_note_width/2,
-                sticky_note_data['position']['ymin'] - min_ymin_of_sticky_notes_data + average_sticky_note_width/2,
-                average_sticky_note_width,
-                sticky_note_data['color'],
-                sticky_note_data['ocr_recognized_text'],
-                board_id,
-                frame_id,
-                session)
+                pos_x = sticky_note_data['position']['xmin'] + average_sticky_note_width / 2, 
+                pos_y = sticky_note_data['position']['ymin'] + average_sticky_note_width / 2,
+                width = average_sticky_note_width,
+                color = sticky_note_data['color'],
+                text = sticky_note_data['ocr_recognized_text'],
+                board_id = board_id,
+                parent_id = frame_id,
+                session = session)
             )
-        # fmt: on
 
-        # for sticky_note_data in sticky_notes_data:
-        #     await asyncio.create_task(create_image(
-        #         sticky_note_data['position']['xmin],
-        #         sticky_note_data['position']['ymin],
-        #         average_sticky_note_width,
-        #         sticky_note_data['name'],
-        #         sticky_note_data['path'],
-        #         board_id,
-        #         frame_id,
-        #         session)
-        #     )
-        print(f"aspect ratio: {comparison_img_aspect_ratio}")
-        print(f"width: {comparison_image_width}")   # 2348.4166666666674
-        print(f"height: {comparison_img_height}")   # 1761.3125
+        create_line(
+            pos_x = full_comparison_img_width + padding_between_stickies_and_comparison_image / 2, 
+            pos_y = full_comparison_img_height / 2,
+            width = 8,
+            height = full_comparison_img_height,
+            color = '#000000',
+            board_id = board_id,
+            parent_id = frame_id,
+            session = session
+        )
 
+        additional_second_column_x_distance = full_comparison_img_width + padding_between_stickies_and_comparison_image
+        for sticky_note_data in sticky_notes_data:
+            await asyncio.create_task(create_image(
+                pos_x = sticky_note_data['position']['xmin'] + average_sticky_note_width / 2 + additional_second_column_x_distance,
+                pos_y = sticky_note_data['position']['ymin'] + average_sticky_note_width / 2,
+                width = average_sticky_note_width,
+                title = sticky_note_data['name'],
+                path = sticky_note_data['path'],
+                board_id = board_id,
+                parent_id = frame_id,
+                session = session)
+            )
+
+        create_line(
+            pos_x = (full_comparison_img_width + padding_between_stickies_and_comparison_image / 2) * 2, 
+            pos_y = full_comparison_img_height / 2,
+            width = 8,
+            height = full_comparison_img_height,
+            color = '#000000',
+            board_id = board_id,
+            parent_id = frame_id,
+            session = session
+        )
+
+        additional_third_column_x_distance = full_comparison_img_width * 2  + padding_between_stickies_and_comparison_image * 2 - full_comparison_img_width / 2
         await asyncio.create_task(create_image(
-            image_pos_x=frame_width + padding_between_stickies_and_comparison_image +
-            comparison_image_width/2,
-            image_pos_y=comparison_img_height/2,
-            width=comparison_image_width,
-            image_name=f"{timestamp}-full-image",
-            image_path=img_file_path,
+            pos_x=full_comparison_img_width + additional_third_column_x_distance,
+            pos_y=full_comparison_img_height/2,
+            width=full_comparison_img_width,
+            title=f"{timestamp}-full-image",
+            path=img_file_path,
             board_id=board_id,
             parent_id=frame_id,
             session=session)
         )
+        # fmt: on
 
         # min_xmin_of_sticky_notes_data = min(sticky_notes_data['position']['xmin'])
         # min_ymin_of_sticky_notes_data = min(sticky_notes_data['position']['ymin'])
