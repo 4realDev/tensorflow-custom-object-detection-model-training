@@ -3,23 +3,23 @@
 # pip install nest-asyncio
 # cd Tensorflow\scripts & python miro-sticky-notes-sync.py
 
-import numpy as np
-import cv2
-import matplotlib.pyplot as plt
-from cgitb import text
-from paddleocr import PaddleOCR
+import nest_asyncio
+import asyncio
+import aiohttp
+import requests
+import tensorflow as tf
 import os
+from paddleocr import PaddleOCR
+from cgitb import text
+import matplotlib.pyplot as plt
+import cv2
+import numpy as np
+
 # from object_detection.utils import config_util
 # from object_detection.builders import model_builder
 # from object_detection.utils import visualization_utils as viz_utils
 # from object_detection.utils import label_map_util
-import tensorflow as tf
-import config
 
-import requests
-import aiohttp
-import asyncio
-import nest_asyncio
 nest_asyncio.apply()
 
 

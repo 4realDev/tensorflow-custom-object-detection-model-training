@@ -1,15 +1,21 @@
-
 # pip install aiohttp
 # pip install nest-asyncio
 # cd Tensorflow\scripts & python miro-sticky-notes-sync.py
 
-import os
-from datetime import date, datetime
-from genericpath import exists
-import numpy as np
-import cv2
+# fmt: off
 import tensorflow as tf
+import cv2
+import numpy as np
+from genericpath import exists
+from datetime import date, datetime
+import os
+import aiohttp
+import asyncio
+import nest_asyncio
 
+import sys
+sys.path.insert(
+    1, 'C:\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\preprocessing')
 import config
 
 from miro_rest_api_functions import \
@@ -19,6 +25,7 @@ from miro_rest_api_functions import \
     delete_all_items, \
     create_item, \
     create_frame, \
+    create_item, \
     create_image, \
     create_all_items, \
     create_new_miro_board_or_get_existing
@@ -38,10 +45,9 @@ from miro_ocr_functions import \
     crop_and_save_recognized_images, \
     get_image_text_data_by_ocr_for_each_file_in_timestamped_folder_and_save_it
 
-import aiohttp
-import asyncio
-import nest_asyncio
 nest_asyncio.apply()
+# fmt: on
+
 
 files = config.files
 paths = config.paths

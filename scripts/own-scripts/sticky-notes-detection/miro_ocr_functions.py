@@ -1,5 +1,6 @@
 
-
+import config
+import colorsys
 from dataclasses import dataclass
 import numpy as np
 from PIL import Image
@@ -11,10 +12,8 @@ import matplotlib.pyplot as plt
 from paddleocr import PaddleOCR
 import asyncio
 import nest_asyncio
-import config
-import colorsys
-nest_asyncio.apply()
 
+nest_asyncio.apply()
 
 # def opencv_script_thresholding(img_path):
 #     img = cv2.imread(img_path, 0)

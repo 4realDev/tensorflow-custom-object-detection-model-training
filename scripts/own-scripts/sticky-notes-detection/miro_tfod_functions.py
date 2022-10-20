@@ -3,20 +3,10 @@
 # pip install nest-asyncio
 # cd Tensorflow\scripts & python miro-sticky-notes-sync.py
 
-import re
-from os import listdir
-from os.path import isfile, join
-import numpy as np
-import cv2
-import matplotlib.pyplot as plt
-import os
-from object_detection.utils import config_util
-from object_detection.builders import model_builder
-from object_detection.utils import visualization_utils as viz_utils
-from object_detection.utils import label_map_util
-import tensorflow as tf
-
 import config
+import nest_asyncio
+import asyncio
+import aiohttp
 from miro_rest_api_functions import \
     get_all_miro_board_names_and_ids, \
     get_all_items, delete_item, \
@@ -24,10 +14,19 @@ from miro_rest_api_functions import \
     create_item, \
     create_all_items, \
     create_new_miro_board_or_get_existing
+import tensorflow as tf
+from object_detection.utils import label_map_util
+from object_detection.utils import visualization_utils as viz_utils
+from object_detection.builders import model_builder
+from object_detection.utils import config_util
+import os
+import matplotlib.pyplot as plt
+import cv2
+import numpy as np
+from os.path import isfile, join
+from os import listdir
+import re
 
-import aiohttp
-import asyncio
-import nest_asyncio
 nest_asyncio.apply()
 
 

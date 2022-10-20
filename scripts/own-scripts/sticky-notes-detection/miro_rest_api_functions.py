@@ -1,16 +1,18 @@
 # pip install requests
 
-from aiohttp import FormData
-from sklearn.feature_extraction import img_to_graph
 import config
-import os
-from typing import Dict, List, Tuple
-from dataclasses import dataclass
-import json
-import requests
-import asyncio
 import nest_asyncio
+import asyncio
+import requests
+import json
+from dataclasses import dataclass
+from typing import Dict, List, Tuple
+import os
+from sklearn.feature_extraction import img_to_graph
+from aiohttp import FormData
+
 nest_asyncio.apply()
+
 
 # board_name = "STICKY NOTES SYNC BOARD"
 # board_description = "Board to test the synchronization of the sticky notes in the real life and the here created miro board."
