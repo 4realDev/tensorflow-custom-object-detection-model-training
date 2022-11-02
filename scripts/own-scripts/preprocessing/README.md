@@ -276,12 +276,209 @@ custom script folder](#_Toc118295656)
 > 
 > Notice from the highlighted console output in the image below, that the library files are now Successfully opened 
 > and a debugging message is presented to confirmthat TensorFlow has successfully Created TensorFlow device.
-> ```
 > 
 >  ![alt text](../../../readme-media/preprocessing/image8.png)
 
-
 &nbsp;
 &nbsp;
 &nbsp;
 
+# TensorFlow Object Detection API Installation
+## Downloading the TensorFlow Model Garden:
+> - Create new folder under e.g. Documents named TensorFlow. (e.g. ```C:\\Users\\user\\Documents\\TensorFlow```).
+> 
+> - To download the models clone [TensorFlow Models repository](https://github.com/tensorflow/models) inside the TensorFlow folder.
+> 
+> You should now have a single folder named models under your TensorFlow folder, which contains another 4 folders as such:
+> ```
+> TensorFlow/
+> └─ models/
+> ├─ community/
+> ├─ official/
+> ├─ orbit/
+> ├─ research/
+> └── \...
+> ```
+
+## Install and compile protobuf
+> Tensorflow Object Detection API uses Protobufs to configure model and training parameters. 
+> 
+> Before the framework can be used, Protobuf libraries must be downloaded and compiled.
+
+> **1. Head to [protoc releases page](https://github.com/google/protobuf/releases)**
+> and download the latest ```protoc-\*-\*.zip``` release (e.g. protoc-3.12.3-win64.zip for 64-bit Windows)
+>
+> ![alt text](../../../readme-media/preprocessing/image9.png)
+
+> **2. Extract contents of the downloaded ```protoc-\*-\*.zip``` in directory ```\<PATH_TO_PROGRAM_FILES\>``` of your choice**
+> 
+> (e.g. C:\\Program Files\\Google Protobuf).
+
+> **3. Add ```C:\\Program Files\\Google Protobuf\\bin``` to your Path environment variable.**
+
+> **4. In new terminal , cd into ```TensorFlow/models/research/``` directory and run the following command:**
+>
+> ```
+> *\# From within TensorFlow/models/research/*
+> cd C:\\\\\_WORK\\GitHub\\\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research
+> protoc object_detection/protos/\*.proto \--python_out=.
+> ```
+> No feedback -- assuming no error
+
+# Install the TensorFlow Object Detection API
+> Installation of the Object Detection API is achieved by installing the object_detection package.
+> This is done by running the following commands from within ```Tensorflow\\models\\research```:
+>
+> **From within TensorFlow/models/research/ copy the setup.py file inside the folder**
+> ```
+> copy
+> C:\\\\\_WORK\\GitHub\\\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research\\object_detection\\packages\\tf2
+> C:\\\\\_WORK\\GitHub\\\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research
+> ```
+>
+> **Run the setup.py file from within ```TensorFlow/models/research/``` to automatically install all necessary packages 
+> and libraires for the TensorFlow Object Detection API**
+> ```
+> cd C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research
+> python -m pip install \--use-feature=2020-resolver .
+> ```
+>
+> ![alt text](../../../readme-media/preprocessing/image10.png)
+
+## Possible Problem with protobuffer and the default setup.py from the package
+> **ERROR:**
+> 
+> ERROR: pip\'s dependency resolver does not currently take into account all the packages that are installed.
+> 
+> This behaviour is the source of the following dependency conflicts.
+>
+> ```
+> tensorflow 2.9.2 requires protobuf\<3.20,\>=3.9.2
+>
+> tensorflow-metadata 1.10.0 requires protobuf\<4,\>=3.13
+>
+> tensorboard 2.9.1 requires protobuf\<3.20,\>=3.9.2
+>
+> apache-beam 2.41.0 requires protobuf\<4,\>=3.12.2
+>
+> but you have protobuf 4.21.6 which is incompatible.
+> ```
+> 
+
+> **SUGGESTED FIX:**
+> 
+> Downgrade protobuf version
+> ```
+> pip install \--upgrade protobuf==3.20.0
+> ```
+> 
+>  ![alt text](../../../readme-media/preprocessing/image11.png)
+
+## Test your Installation
+> **From within TensorFlow/models/research/ run:**
+> ```
+> cd C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research
+> python object_detection/builders/model_builder_tf2_test.py
+> ```
+>
+> Printout should show "OK" and look like the one below:
+> ```
+> \...
+>
+> \[ OK \] ModelBuilderTF2Test.test_create_ssd_models_from_config
+>
+> \[ RUN \] ModelBuilderTF2Test.test_invalid_faster_rcnn_batchnorm_update
+>
+> \...
+> 
+> INFO:tensorflow:time(\_\_main\_\_.ModelBuilderTF2Test.test_unknown-ssd_feature_extractor):
+> 0.0s
+> 
+> I0608 18:49:13.197239 29296 test_util.py:2102\]
+> time(\_\_main\_\_.ModelBuilderTF2Test.test_unknown-ssd_feature_extractor):
+> 0.0s
+> 
+> \[ OK \] ModelBuilderTF2Test.test_unknown-ssd_feature_extractor
+> 
+> \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--
+> 
+> Ran 24 tests **in** 29.980s
+> 
+> **OK (skipped=1)**
+> ```
+
+# Copy TFOD API scripts for model training, evaluation and exporting in custom script folder
+> - Create folder inside TensorFlow/scripts named tfod-api-scripts
+>
+> - Copy the TensorFlow Object Detection API scripts model_main_tf2.py and exporter_main_v2.py from TensorFlow\\models\\research\\object_detection\\ into the new 
+> created folder TensorFlow\\scripts\\tfod-api-scripts
+>
+> model_main_tf2.py is used for the training and evaluation of the model (necessary)
+> exporter_main_v2.py is used for the exporting of the model (optional)
+>
+> **From within TensorFlow/models/research/ run:**
+> ```
+> copy
+> C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research\\object_detection\\**model_main_tf2.py**
+> C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\scripts\\tfod-api-scripts
+> ```
+>
+> **From within TensorFlow/models/research/ run:**
+> ```
+> copy
+> C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research\\object_detection\\**exporter_main_v2.py**
+> C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\scripts\\tfod-api-scripts
+> ```
+
+# Install LabelImg
+> Recommended way with PIP Package Manager does not work properly with python 3.10.
+> Instead use the "Build from source" Way:
+
+## **Clone labelImg repo from GitHub**
+> - Inside TensorFlow folder, create new directory named addons and navigate into it
+>
+> - Clone the labelImg repo with Git inside the ```TensorFlow\\addons``` folder
+>
+> ```
+> cd C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\addons
+> git clone https://github.com/heartexlabs/labelImg.git
+> ```
+>
+> **The final folder structure should look like this:**
+> ```
+> TensorFlow/
+> ├─ scripts
+> │ └─ own-scripts/
+> │ └─ tfod-api-scripts/
+> │ └─ tfod-tutorial-scripts/
+> **├─ addons**
+> **│ └─ labelImg/**
+> └─ tensorflow-model-garden/
+> ├─ community/
+> ├─ official/
+> ├─ orbit/
+> ├─ research/
+> └─ \...
+> ```
+
+## **Install dependencies and compiling package**
+> - Open new terminal and activate virtual environment
+>
+> - Navigate into ```TensorFlow/addons/labelImg``` and run the following commands:
+>
+> ```
+> cd C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\addons\\labelImg
+> pyrcc5 -o libs/resources.py resources.qrc
+> ```
+
+## **Test your installation**
+> **From within ```Tensorflow/addons/labelImg```**
+> 
+> ```
+> python labelImg.py
+> ```
+> **or:**
+>
+> ```
+> python labelImg.py \[IMAGE_PATH\] \[PRE-DEFINED CLASS FILE\]
+> ```
