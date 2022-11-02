@@ -283,7 +283,7 @@ custom script folder](#_Toc118295656)
 &nbsp;
 &nbsp;
 
-# TensorFlow Object Detection API Installation
+# IV. TensorFlow Object Detection API Installation
 ## Downloading the TensorFlow Model Garden:
 > - Create new folder under e.g. Documents named TensorFlow. (e.g. ```C:\\Users\\user\\Documents\\TensorFlow```).
 > 
@@ -325,7 +325,7 @@ custom script folder](#_Toc118295656)
 > ```
 > No feedback -- assuming no error
 
-# Install the TensorFlow Object Detection API
+# V. Install the TensorFlow Object Detection API
 > Installation of the Object Detection API is achieved by installing the object_detection package.
 > This is done by running the following commands from within ```Tensorflow\\models\\research```:
 >
@@ -400,14 +400,14 @@ custom script folder](#_Toc118295656)
 > 
 > \[ OK \] ModelBuilderTF2Test.test_unknown-ssd_feature_extractor
 > 
-> \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--
+> \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--
 > 
 > Ran 24 tests **in** 29.980s
 > 
 > **OK (skipped=1)**
 > ```
 
-# Copy TFOD API scripts for model training, evaluation and exporting in custom script folder
+# VI. Copy TFOD API scripts for model training, evaluation and exporting in custom script folder
 > - Create folder inside TensorFlow/scripts named tfod-api-scripts
 >
 > - Copy the TensorFlow Object Detection API scripts model_main_tf2.py and exporter_main_v2.py from TensorFlow\\models\\research\\object_detection\\ into the new 
@@ -430,7 +430,7 @@ custom script folder](#_Toc118295656)
 > C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\scripts\\tfod-api-scripts
 > ```
 
-# Install LabelImg
+# VII. Install LabelImg
 > Recommended way with PIP Package Manager does not work properly with python 3.10.
 > Instead use the "Build from source" Way:
 
