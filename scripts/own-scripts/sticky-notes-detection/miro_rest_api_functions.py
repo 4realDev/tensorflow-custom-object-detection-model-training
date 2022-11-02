@@ -136,7 +136,7 @@ async def create_frame(
 
 
 # CREATE ITEM
-async def create_item(
+async def create_sticky_note(
     pos_x,
     pos_y,
     width: int,
@@ -246,7 +246,7 @@ async def create_image(
 
 
 # CREATE LIST OF ITEMS
-async def create_all_items(sticky_note_positions):
+async def create_all_sticky_notes(sticky_note_positions):
     global global_session
     global global_board_id
 

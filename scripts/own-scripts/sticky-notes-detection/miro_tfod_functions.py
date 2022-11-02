@@ -11,8 +11,8 @@ from miro_rest_api_functions import \
     get_all_miro_board_names_and_ids, \
     get_all_items, delete_item, \
     delete_all_items, \
-    create_item, \
-    create_all_items, \
+    create_sticky_note, \
+    create_all_sticky_notes, \
     create_new_miro_board_or_get_existing
 import tensorflow as tf
 from object_detection.utils import label_map_util
@@ -44,17 +44,8 @@ detection_model = model_builder.build(
 category_index = label_map_util.create_category_index_from_labelmap(
     files['LABELMAP'])
 
-min_score_thresh = 0.9
-line_thickness = 10
-
-
-# FUNCTIONS NECESSARY FOR REAL TIME OBJECT DETECTION
-@ tf.function
-def detect_fn(image):
-    image, shapes = detection_model.preprocess(image)
-    prediction_dict = detection_model.predict(image, shapes)
-    detections = detection_model.postprocess(prediction_dict, shapes)
-    return detections
+min_score_thresh = config.min_score_thresh
+bounding_box_and_label_line_thickness = config.bounding_box_and_label_line_thickness
 
 
 # LOAD THE LATEST CHECKPOINT OF THE OBJECT DETECTION MODEL
@@ -74,6 +65,9 @@ def get_maximum_trained_model_checkpoint():
     return maximum_ckpt_number
 
 
+# Restore the latest checkpoint of trained model
+# The checkpoint files correspond to snapshots of the model at given steps
+# The latest checkpoint is the most trained state of the model
 def load_latest_checkpoint_of_custom_object_detection_model():
     maximum_ckpt_number = get_maximum_trained_model_checkpoint()
     ckpt = tf.compat.v2.train.Checkpoint(model=detection_model)
@@ -81,21 +75,70 @@ def load_latest_checkpoint_of_custom_object_detection_model():
         paths['CUSTOM_MODEL_PATH'], f"ckpt-{maximum_ckpt_number}")).expect_partial()
 
 
+# FUNCTIONS NECESSARY FOR REAL TIME OBJECT DETECTION
+@ tf.function
+def detect_fn(image):
+    image, shapes = detection_model.preprocess(image)
+    prediction_dict = detection_model.predict(image, shapes)
+    detections = detection_model.postprocess(prediction_dict, shapes)
+    return detections
+
+
+# use the detection model to preprocess, predict and postprocess image to get detections
 def get_detections_from_img(image):
     image_np = np.array(image)
+    # converting image into tensor object
     input_tensor = tf.convert_to_tensor(
         np.expand_dims(image_np, 0), dtype=tf.float32)
+    # make detections on image
     detections = detect_fn(input_tensor)
     return detections
 
 
-def visualize_detections_from_image(
+# returns a list with the relative ymin, xmin, ymax, xmax coordinates of those boundingboxes, which are above the min_score_thresh
+def get_bounding_boxes_above_min_score_thresh(detections, imgHeight, imgWidth, min_score_thresh):
+    formatted_scanned_object_detection_boxes = []
+    for index, detection_score in enumerate(detections['detection_scores'][0]):
+        if detection_score > min_score_thresh:
+            scanned_object_detection_box = detections['detection_boxes'][0][index]
+            # scanned_object_class = int(
+            #     detections['detection_classes'][0][index] + 1)
+
+            # values of bounding-boxes must be treated as relative coordinates to the image instead as absolute
+            ymin = round(float(scanned_object_detection_box[0] * imgHeight))
+            xmin = round(float(scanned_object_detection_box[1] * imgWidth))
+            ymax = round(float(scanned_object_detection_box[2] * imgHeight))
+            xmax = round(float(scanned_object_detection_box[3] * imgWidth))
+
+            # formated_scanned_object_label = list(
+            #     filter(lambda label: (
+            #         label['id'] == scanned_object_class), config.labels)
+            # )
+
+            formated_scanned_object_detection_box = {
+                "ymin": ymin,
+                "xmin": xmin,
+                "ymax": ymax,
+                "xmax": xmax,
+                # "color": formated_scanned_object_label[0]['color']
+            }
+
+            # print(f"- bounding boxes (relative): {scanned_object_data} \n")
+
+            formatted_scanned_object_detection_boxes.append(
+                formated_scanned_object_detection_box)
+
+    return formatted_scanned_object_detection_boxes
+
+
+# returns the given image with its overlay labeled bounding boxes from the passed detections (formatted with scores and label names)
+def get_image_with_overlayed_labeled_bounding_boxes(
     image,
     detections,
     category_index=category_index,
     min_score_thresh=min_score_thresh,
-    line_thickness=line_thickness,
-    visualize_bounding_box_detections_in_image=True
+    line_thickness=bounding_box_and_label_line_thickness,
+    visualize_overlayed_labeled_bounding_boxes_in_image=True
 ):
     image_np = np.array(image)
 
@@ -111,9 +154,10 @@ def visualize_detections_from_image(
     # necessary for detections['detection_classes']
     # because label ids start with 1 and detections['detection_classes'] start with 0
     label_id_offset = 1
+    # make copy, because visualize_boxes_and_labels_on_image_array modifies image in place
     image_np_with_detections = image_np.copy()
 
-    viz_utils.visualize_boxes_and_labels_on_image_array(
+    image_np_with_detections = viz_utils.visualize_boxes_and_labels_on_image_array(
         image_np_with_detections,
         detections['detection_boxes'],
         detections['detection_classes']+label_id_offset,
@@ -125,7 +169,7 @@ def visualize_detections_from_image(
         agnostic_mode=False,
         line_thickness=line_thickness)
 
-    if visualize_bounding_box_detections_in_image:
+    if visualize_overlayed_labeled_bounding_boxes_in_image:
         # TODO: plt.show seems not to work, replace it with cv2.imshow?
         # plt.imshow(cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB))
         # plt.show()
@@ -141,42 +185,7 @@ def visualize_detections_from_image(
     return image_np_with_detections
 
 
-def get_bounding_boxes_above_min_score_thres(detections, imgHeight, imgWidth):
-    # filter data for only the necessary information
-    formatted_scanned_object_detection_boxes = []
-    for index, detection_score in enumerate(detections['detection_scores'][0]):
-        if detection_score > 0.8:
-            # same as in "11. Auto-Labeling" of "2. Training and Detection"
-            scanned_object_detection_box = detections['detection_boxes'][0][index]
-            scanned_object_class = int(
-                detections['detection_classes'][0][index] + 1)
-            ymin = round(float(scanned_object_detection_box[0] * imgHeight))
-            xmin = round(float(scanned_object_detection_box[1] * imgWidth))
-            ymax = round(float(scanned_object_detection_box[2] * imgHeight))
-            xmax = round(float(scanned_object_detection_box[3] * imgWidth))
-
-            formated_scanned_object_label = list(
-                filter(lambda label: (
-                    label['id'] == scanned_object_class), config.labels)
-            )
-
-            formated_scanned_object_detection_box = {
-                "ymin": ymin,
-                "xmin": xmin,
-                "ymax": ymax,
-                "xmax": xmax,
-                "color": formated_scanned_object_label[0]['color']
-                # "timestamp": datetime.timestamp(datetime.now())
-            }
-
-            # print(f"- bounding boxes (relative): {scanned_object_data} \n")
-
-            formatted_scanned_object_detection_boxes.append(
-                formated_scanned_object_detection_box)
-
-    return formatted_scanned_object_detection_boxes
-
-
+# NOT IN USE!!!
 async def scan_for_object_in_video(print_results: bool):
     # ValueError: 'images' must have either 3 or 4 dimensions. -> could be related to wrong source of VideoCapture!
     cap = cv2.VideoCapture(1)
@@ -189,12 +198,12 @@ async def scan_for_object_in_video(print_results: bool):
         # await asyncio.sleep(1)
         ret, frame = cap.read()
         frame_detections = get_detections_from_img(frame)
-        frame_detections_np_with_detections = visualize_detections_from_image(
+        frame_detections_np_with_detections = get_image_with_overlayed_labeled_bounding_boxes(
             frame,
             frame_detections,
             category_index,
             min_score_thresh=min_score_thresh,
-            line_thickness=line_thickness,
+            line_thickness=bounding_box_and_label_line_thickness,
             print_results=print_results
         )
 
@@ -206,7 +215,7 @@ async def scan_for_object_in_video(print_results: bool):
             cv2.destroyAllWindows()
             break
 
-        formatted_scanned_object_detection_boxes = get_bounding_boxes_above_min_score_thres(
+        formatted_scanned_object_detection_boxes = get_bounding_boxes_above_min_score_thresh(
             detections=frame_detections, imgHeight=height, imgWidth=width)
 
         print(
@@ -245,7 +254,7 @@ async def scan_for_object_in_video(print_results: bool):
         await asyncio.create_task(delete_all_items())
         while board_items_count < len(formatted_scanned_object_detection_boxes):
             if len(formatted_scanned_object_detection_boxes) > 0:
-                await asyncio.create_task(create_item(formatted_scanned_object_detection_boxes[last_index - 1]))
+                await asyncio.create_task(create_sticky_note(formatted_scanned_object_detection_boxes[last_index - 1]))
                 last_index = last_index - 1
                 board_items_count = board_items_count + 1
 
@@ -258,7 +267,7 @@ async def scan_for_object_in_video(print_results: bool):
 # #                     print(f"Object {scanned_object_data} already exist.")
 # #                 else:
 # #                     scanned_object_data_list.append(scanned_object_data)
-# #                     await asyncio.create_task(create_item(scanned_object_data))
+# #                     await asyncio.create_task(create_sticky_note(scanned_object_data))
 # #                     print(f"Added scanned_object_data {scanned_object_data} to the list and created it on miro board.")
 
 
@@ -267,6 +276,6 @@ async def scan_for_object_in_video(print_results: bool):
 #         # detect changes in scanned_object_positions
 #         # Get all items on board
 #         # Check if some items exist in real-world, which are missing on miro board
-# #         await asyncio.create_task(create_all_items(scanned_object_data_list))
+# #         await asyncio.create_task(create_all_sticky_notes(scanned_object_data_list))
 
     return storaged_scanned_object_detection_boxes

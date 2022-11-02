@@ -3,6 +3,7 @@
 # cd Tensorflow\scripts & python miro-sticky-notes-sync.py
 
 # fmt: off
+from typing import Tuple
 import tensorflow as tf
 import cv2
 import numpy as np
@@ -24,16 +25,16 @@ from miro_rest_api_functions import \
     delete_item, \
     delete_all_items, \
     create_frame, \
-    create_item, \
+    create_sticky_note, \
     create_line, \
     create_image, \
-    create_all_items, \
+    create_all_sticky_notes, \
     create_new_miro_board_or_get_existing
 
 from miro_tfod_functions import \
-    visualize_detections_from_image, \
+    get_image_with_overlayed_labeled_bounding_boxes, \
     get_detections_from_img, \
-    get_bounding_boxes_above_min_score_thres, \
+    get_bounding_boxes_above_min_score_thresh, \
     load_latest_checkpoint_of_custom_object_detection_model, \
     scan_for_object_in_video
 
@@ -52,39 +53,71 @@ nest_asyncio.apply()
 files = config.files
 paths = config.paths
 
+min_score_thresh = config.min_score_thresh
+
 global_session = None
 global_board_id = None
 
 
-async def get_recognized_sticky_notes_data(img_file_path):
+async def get_recognized_sticky_notes_data(img_file_path) -> Tuple[list, str]:
     timestamp = get_timestamp_yyyy_mm_dd_hh_mm_ss()
     timestamped_folder_path = create_timestamp_folder_and_return_its_path(
         timestamp)
+
     img = cv2.imread(img_file_path)
 
     img_detections = get_detections_from_img(img)
 
-    img_detection_bounding_boxes = get_bounding_boxes_above_min_score_thres(
-        detections=img_detections, imgHeight=img.shape[0], imgWidth=img.shape[1])
+    img_detection_bounding_boxes = get_bounding_boxes_above_min_score_thresh(
+        detections=img_detections,
+        imgHeight=img.shape[0],
+        imgWidth=img.shape[1],
+        min_score_thresh=min_score_thresh
+    )
 
-    img_with_detection_bounding_boxes = visualize_detections_from_image(
-        img, img_detections, visualize_bounding_box_detections_in_image=False)
+    # only necessary for saving the image with the detections inside the backup folder
+    img_with_overlayed_labeled_detection_bounding_boxes = get_image_with_overlayed_labeled_bounding_boxes(
+        img,
+        img_detections,
+        visualize_overlayed_labeled_bounding_boxes_in_image=False
+    )
 
+    # save original image
     save_image_with_timestamp(
-        img, img_file_path, timestamp, timestamped_folder_path, suffix="-original")
+        img,
+        img_file_path,
+        timestamp, timestamped_folder_path,
+        suffix="-original"
+    )
 
+    # save original image with bounding boxes
     save_image_with_timestamp(
-        img_with_detection_bounding_boxes, img_file_path, timestamp, timestamped_folder_path, suffix="-with_bounding_boxes")
+        img_with_overlayed_labeled_detection_bounding_boxes,
+        img_file_path,
+        timestamp,
+        timestamped_folder_path,
+        suffix="-with_bounding_boxes"
+    )
 
+    # necessary to save the cropped image as files, to run PaddleOCR detection on them
     cropped_images_data = crop_and_save_recognized_images(
-        img, img_detection_bounding_boxes, timestamped_folder_path)
+        img,
+        img_detection_bounding_boxes,
+        timestamped_folder_path
+    )
 
-    cropped_images_data_with_ocr_text = await asyncio.create_task(get_image_text_data_by_ocr_for_each_file_in_timestamped_folder_and_save_it(cropped_images_data, timestamped_folder_path, visualize_text_in_image=False))
+    cropped_images_data_with_ocr_text = await asyncio.create_task(
+        get_image_text_data_by_ocr_for_each_file_in_timestamped_folder_and_save_it(
+            cropped_images_data,
+            timestamped_folder_path,
+            visualize_text_in_image=False
+        )
+    )
 
     return [cropped_images_data_with_ocr_text, timestamp]
 
 
-# def is_frame_with_todays_timestamp_existing(frames_data, timestamp):
+# def is_miro_board_with_todays_timestamp_existing(frames_data, timestamp):
 #     frame_exists = False
 #     frames_data_set = set(frames_data['data'])
 #     for i, frame_data in enumerate(frames_data_set):
@@ -100,7 +133,7 @@ async def main():
         load_latest_checkpoint_of_custom_object_detection_model()
 
         # TODO: Remove/Replace Code when start testing with Video Frames
-        img_file_path = r"C:\Users\vbraz\Desktop\IMAGE_DATA_STICKY_NOTES\cando-dropbox-sticky-notes-images\only-yellow\IMG_8693.JPEG"
+        img_file_path = r"C:\Users\vbraz\Desktop\IMAGE_DATA_STICKY_NOTES\cando-dropbox-sticky-notes-images\perfect\IMG_9679.JPEG"
         try:
             with open(img_file_path) as f:
                 print("File present")
@@ -166,7 +199,7 @@ async def main():
         ))
 
         for sticky_note_data in sticky_notes_data:
-            await asyncio.create_task(create_item(
+            await asyncio.create_task(create_sticky_note(
                 pos_x = sticky_note_data['position']['xmin'] + average_sticky_note_width / 2, 
                 pos_y = sticky_note_data['position']['ymin'] + average_sticky_note_width / 2,
                 width = average_sticky_note_width,
@@ -270,7 +303,7 @@ async def main():
         #       }
         #     },
 
-        # visualize_detections_from_image(img, img_detections)
+        # get_image_with_overlayed_labeled_bounding_boxes(img, img_detections)
 
         # RuntimeError: (PreconditionNotMet) The third-party dynamic library (cudnn64_7.dll) that Paddle depends on is not configured correctly. (error code is 126)
         # TODO: Try to run Paddle OCR on GPU and uninstall CPU package -> pip uninstall paddlepaddle -i https://mirror.baidu.com/pypi/simple

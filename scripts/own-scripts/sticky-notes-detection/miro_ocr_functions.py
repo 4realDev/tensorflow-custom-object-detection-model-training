@@ -1,5 +1,7 @@
 
 import config
+from typing import Tuple
+from cv2 import Mat
 import colorsys
 from dataclasses import dataclass
 import numpy as np
@@ -44,10 +46,8 @@ nest_asyncio.apply()
 
 
 # VARS FOR PADDLE OCR MODEL
-img_path = 'C:\_WORK\\GitHub\_data-science\TFODCourse\sticky_notes_test_images\single_difficult.jpg'
-# for german use 'german' -> https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.6/doc/doc_en/quickstart_en.md
-ocr_model = PaddleOCR(lang='en')
-ocr_confidence_threshold = 0.50
+ocr_model = PaddleOCR(lang=config.ocr_model_language)
+ocr_confidence_threshold = config.ocr_confidence_threshold
 
 paths = config.paths
 
@@ -140,7 +140,7 @@ def save_image_with_timestamp(img: np.ndarray, img_file_path: str, timestamp: st
 def crop_and_save_recognized_images(
         img: np.ndarray,
         img_detection_bounding_boxes,
-        timestamped_folder_path: str):
+        timestamped_folder_path: str) -> list:
 
     cropped_images_data = []
 
@@ -149,7 +149,7 @@ def crop_and_save_recognized_images(
         ymax = img_detection_bounding_box['ymax']
         xmin = img_detection_bounding_box['xmin']
         xmax = img_detection_bounding_box['xmax']
-        color = img_detection_bounding_box['color']
+        # color = img_detection_bounding_box['color']
 
         cropped_img_according_to_its_bounding_box = img[ymin:ymax, xmin:xmax]
 
@@ -158,7 +158,7 @@ def crop_and_save_recognized_images(
         cropped_images_data.append(
             {
                 "position": {"ymin": ymin, "xmin": xmin, "ymax": ymax, "xmax": xmax},
-                "color": color,
+                # "color": color,
                 "name": cropped_img_according_to_its_bounding_box_name,
                 "ocr_recognized_text": "",
             })
@@ -176,7 +176,7 @@ def crop_and_save_recognized_images(
     return cropped_images_data
 
 
-def remove_forbidden_ascii_characters(string):
+def remove_forbidden_ascii_characters(string: str) -> str:
     forbidden_characters = ['<', '>', ':',
                             '"', "\'", '/', '\\', '|', '?', '*']
     for forbidden_character in forbidden_characters:
@@ -187,75 +187,96 @@ def remove_forbidden_ascii_characters(string):
     return string
 
 
-def rgb_to_hsv(r, g, b):
+# resize image down to 1 pixel.
+def get_dominant_color(img_path):
+    img = Image.open(img_path)
+    img = img.convert("RGB")
+    img = img.resize((1, 1), resample=0)
+    dominant_rgb_color = img.getpixel((0, 0))
+    return dominant_rgb_color
+
+
+def rgb_to_hsv(r, g, b) -> Tuple[int, int, int]:
     temp = colorsys.rgb_to_hsv(r, g, b)
     h = int(temp[0] * 360)
     s = int(temp[1] * 100)
     v = round(temp[2] * 100 / 255)
     return [h, s, v]
 
-# resize image down to 1 pixel.
 
+def get_sticky_note_color_class_from_rgb(rgb_color):
+    [h, s, v] = rgb_to_hsv(
+        rgb_color[0],   # r
+        rgb_color[1],   # g
+        rgb_color[2]    # b
+    )
 
-def get_dominant_color(img_path):
-    img = Image.open(img_path)
-    img = img.convert("RGB")
-    img = img.resize((1, 1), resample=0)
-    dominant_color = img.getpixel((0, 0))
+    sticky_note_color_class = None
+    hue = h
 
-    cropped_img_dominant_color_hsv = rgb_to_hsv(dominant_color[0],
-                                                dominant_color[1], dominant_color[2])
-
-    color_class = None
-    hue = cropped_img_dominant_color_hsv[0]
-
-    if hue > 10 and hue < 100:
-        color_class = "yellow"
+    if hue > 10 and hue < 50:
+        sticky_note_color_class = "orange"
+    if hue > 50 and hue < 100:
+        sticky_note_color_class = "yellow"
     elif hue > 100 and hue < 180:
-        color_class = "green"
+        sticky_note_color_class = "green"
     elif hue > 180 and hue < 290:
-        color_class = "blue"
+        sticky_note_color_class = "blue"
     elif hue > 290 or hue > 0 and hue < 10:
-        color_class = "pink"
+        sticky_note_color_class = "pink"
 
-    return color_class
+    return sticky_note_color_class
 
 
-async def get_image_text_data_by_ocr_for_each_file_in_timestamped_folder_and_save_it(cropped_images_data: list, timestamped_folder_path: str, ocr_confidence_threshold=0.5, visualize_text_in_image=False):
+async def get_image_text_data_by_ocr_for_each_file_in_timestamped_folder_and_save_it(
+    cropped_images_data: list,
+    timestamped_folder_path: str,
+    ocr_confidence_threshold=0.5,
+    visualize_text_in_image=False
+) -> list:
     for index, cropped_image_data in enumerate(cropped_images_data):
         image_file_path = os.path.join(
             timestamped_folder_path, cropped_image_data['name'])
         # checking if it is a file
         if os.path.isfile(image_file_path):
-            image_ocr_data_array = await asyncio.create_task(get_image_text_data_by_ocr(image_file_path, ocr_confidence_threshold, visualize_text_in_image=False))
-            image_with_ocr_data_visualization = image_ocr_data_array[1]
+            [image_ocr_data_array, image_with_ocr_data_visualization] = await asyncio.create_task(
+                get_image_text_data_by_ocr(
+                    image_file_path,
+                    ocr_confidence_threshold,
+                    visualize_text_in_image=False
+                )
+            )
             cv2.imwrite(image_file_path, image_with_ocr_data_visualization)
 
             # get every ocr bounding box and create a string collecting all ocr bounding boxes
             image_ocr_text = ""
-            for image_ocr_data in image_ocr_data_array[0]:
+            for image_ocr_data in image_ocr_data_array:
                 image_ocr_text = image_ocr_text + \
                     image_ocr_data['text'] + " "
 
             new_image_file_name = f"{index}_{image_ocr_text}"
 
+            # fmt: off
             # remove forbidden printable ASCII characters from file name:
             # < > : " / \ | ? * '
-            new_image_file_name = remove_forbidden_ascii_characters(
-                new_image_file_name)
+            new_image_file_name = remove_forbidden_ascii_characters(new_image_file_name)
 
             new_image_file_name_with_ocr_information_path = os.path.join(
-                timestamped_folder_path, f"{new_image_file_name}.png")
+                timestamped_folder_path, 
+                f"{new_image_file_name}.png"
+            )
 
-            os.rename(image_file_path,
-                      new_image_file_name_with_ocr_information_path)
+            os.rename(image_file_path, new_image_file_name_with_ocr_information_path)
 
-            # override name with the new one
+            sticky_note_dominant_rgb_color = get_dominant_color(new_image_file_name_with_ocr_information_path)
+            sticky_note_color_class = get_sticky_note_color_class_from_rgb(sticky_note_dominant_rgb_color)
+
+            # override cropped_image_data with new data from text and color recognition
             cropped_image_data['name'] = new_image_file_name
             cropped_image_data['ocr_recognized_text'] = image_ocr_text
-            cropped_image_data['color'] = get_dominant_color(
-                new_image_file_name_with_ocr_information_path)
+            cropped_image_data['color'] = sticky_note_color_class
             cropped_image_data['path'] = new_image_file_name_with_ocr_information_path
+            # fmt: on
 
     if visualize_text_in_image:
         cv2.waitKey(0)
@@ -276,7 +297,7 @@ def euclidean(text_and_boxes_array):
     return ((xmin - coor_origin_x)**2 + (ymin - coor_origin_y)**2)**0.5
 
 
-async def get_image_text_data_by_ocr(img_path, ocr_confidence_threshold=ocr_confidence_threshold, visualize_text_in_image=True):
+async def get_image_text_data_by_ocr(img_path, ocr_confidence_threshold=ocr_confidence_threshold, visualize_text_in_image=True) -> Tuple[list, Mat]:
     result = ocr_model.ocr(img_path)
 
     # convert all text into array
@@ -285,7 +306,6 @@ async def get_image_text_data_by_ocr(img_path, ocr_confidence_threshold=ocr_conf
     # for text in text_array:
     #     print(text)
 
-    # 3. Visualise Results
     # Extracting detected components
     boxes = [res[0] for res in result]
     texts = [res[1][0] for res in result]
@@ -344,6 +364,7 @@ async def get_image_text_data_by_ocr(img_path, ocr_confidence_threshold=ocr_conf
     return [text_and_boxes_array, img]
 
 
+# NOT IN USE!!!
 def opencv_script_thresholding(img_path):
     img = cv2.imread(img_path, 0)
 

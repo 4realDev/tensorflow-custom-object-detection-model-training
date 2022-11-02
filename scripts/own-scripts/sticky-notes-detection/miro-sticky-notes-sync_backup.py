@@ -290,7 +290,7 @@ async def delete_all_items():
 # CREATE ITEM
 
 
-async def create_item(item_position):
+async def create_sticky_note(item_position):
     global global_session
     global global_board_id
 
@@ -317,7 +317,7 @@ async def create_item(item_position):
 # CREATE LIST OF ITEMS
 
 
-async def create_all_items(item_positions):
+async def create_all_sticky_notes(item_positions):
     global global_session
     global global_board_id
 
@@ -361,7 +361,7 @@ def get_detections_from_img(image):
     return detections
 
 
-def visualize_detections_from_image(
+def get_image_with_overlayed_labeled_bounding_boxes(
     image,
     detections,
     category_index,
@@ -424,7 +424,7 @@ async def scan_for_object_in_video(print_results: bool):
         # await asyncio.sleep(1)
         ret, frame = cap.read()
         frame_detections = get_detections_from_img(frame)
-        frame_detections_np_with_detections = visualize_detections_from_image(
+        frame_detections_np_with_detections = get_image_with_overlayed_labeled_bounding_boxes(
             frame,
             frame_detections,
             category_index,
@@ -499,7 +499,7 @@ async def scan_for_object_in_video(print_results: bool):
         await asyncio.create_task(delete_all_items())
         while board_items_count < len(formatted_scanned_object_detection_boxes):
             if len(formatted_scanned_object_detection_boxes) > 0:
-                await asyncio.create_task(create_item(formatted_scanned_object_detection_boxes[last_index - 1]))
+                await asyncio.create_task(create_sticky_note(formatted_scanned_object_detection_boxes[last_index - 1]))
                 last_index = last_index - 1
                 board_items_count = board_items_count + 1
 
@@ -512,7 +512,7 @@ async def scan_for_object_in_video(print_results: bool):
 # #                     print(f"Object {scanned_object_data} already exist.")
 # #                 else:
 # #                     scanned_object_data_list.append(scanned_object_data)
-# #                     await asyncio.create_task(create_item(scanned_object_data))
+# #                     await asyncio.create_task(create_sticky_note(scanned_object_data))
 # #                     print(f"Added scanned_object_data {scanned_object_data} to the list and created it on miro board.")
 
 
@@ -521,7 +521,7 @@ async def scan_for_object_in_video(print_results: bool):
 #         # detect changes in scanned_object_positions
 #         # Get all items on board
 #         # Check if some items exist in real-world, which are missing on miro board
-# #         await asyncio.create_task(create_all_items(scanned_object_data_list))
+# #         await asyncio.create_task(create_all_sticky_notes(scanned_object_data_list))
 
     return storaged_scanned_object_detection_boxes
 
