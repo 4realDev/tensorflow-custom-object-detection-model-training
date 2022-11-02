@@ -4,47 +4,59 @@ r""" Changing something on the config please re-run all the scripts to create a 
     cd C:\_WORK\GitHub\_data-science\TensorFlow\venv
     .\tfod-sticky-notes\Scripts\activate
 
-    1.	Adjust the “config.py” file in C:\\_WORK\GitHub\\_data-science\TensorFlow\scripts\own-scripts according to your needs
+    1.	Adjust the “config.py” file in C:\\_WORK\GitHub\\_data-science\TensorFlow\scripts\own-scripts\preprocessing according to your needs
 
     2.	Run the “create_model_workspace.py” script to setup the folder structure, create the label map, download and extract the pre-trained model, copy the pipeline.config file from the pre-trained model into the custom model and adjust the pipeline.config
-    python C:\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\create_model_workspace.py
+    python C:\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\preprocessing\create_model_workspace.py
 
     3.	Collect images and label them with labelImg to create their XML file
     python C:\_WORK\GitHub\_data-science\TensorFlow\addons\labelImg\labelImg.py
 
     4.	Run the “prepare_image_data_for_training.py” script to partition the image data into test and train and to create the tf.records for test.record and train.record out of the labeled image data
-    python C:\\_WORK\GitHub\\_data-science\TensorFlow\scripts\own-scripts\prepare_image_data_for_training.py
+    python C:\\_WORK\GitHub\\_data-science\TensorFlow\scripts\own-scripts\preprocessing\prepare_image_data_for_training.py
 
     5.	Run the “train_custom_model.py” script to train the model
-    python C:\\_WORK\GitHub\\_data-science\TensorFlow\scripts\own-scripts\train_custom_model.py
+    python C:\\_WORK\GitHub\\_data-science\TensorFlow\scripts\own-scripts\preprocessing\train_custom_model.py
 
     6.	Run the “eval_custom_model.py” script to eval the model
-    python C:\\_WORK\GitHub\\_data-science\TensorFlow\scripts\own-scripts\eval_custom_model.py
+    python C:\\_WORK\GitHub\\_data-science\TensorFlow\scripts\own-scripts\preprocessing\eval_custom_model.py
 
     7.	Run the “run_tensorboard_on_custom_model.py” script to start TensorBoard servor for custom model
-    python C:\\_WORK\GitHub\\_data-science\TensorFlow\scripts\own-scripts\run_tensorboard_on_custom_model.py
+    python C:\\_WORK\GitHub\\_data-science\TensorFlow\scripts\own-scripts\preprocessing\run_tensorboard_on_custom_model.py
 
     8.	Run the “export_custom_model.py” script to export the custom model into the export folder within the custom models workspace
-    python C:\\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\export_custom_model.py
+    python C:\\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\preprocessing\export_custom_model.py
 
 
     MAIN SCRIPTS
-    python C:\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\miro-sticky-notes-sync.py
+    python C:\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\sticky-notes-detection\miro-sticky-notes-sync.py
 """
 
 import os
-
 # labels the custom model detects
 labels = [{'name': 'yellow_sticky_note', 'id': 1, 'color': 'yellow'},
           {'name': 'blue_sticky_note', 'id': 2, 'color': 'blue'},
           {'name': 'pink_sticky_note', 'id': 3, 'color': 'pink'},
           {'name': 'green_sticky_note', 'id': 4, 'color': 'green'}]
 
+
 # vars necessary for pipeline.config adjustments and for model training
 num_classes = len(labels)
 batch_size = 4
 num_steps = 25000
 fine_tune_checkpoint_type = "detection"  # "classification" or "detection"
+
+
+# vars for PADDLE OCR model
+# for german use 'german' -> https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.6/doc/doc_en/quickstart_en.md
+ocr_model_language = "en"
+ocr_confidence_threshold = 0.50
+
+
+# vars for real time object detection
+min_score_thresh = 0.9
+bounding_box_and_label_line_thickness = 10
+
 
 # file names
 PRETRAINED_MODEL_NAME = 'ssd_resnet50_v1_fpn_640x640_coco17_tpu-8'
