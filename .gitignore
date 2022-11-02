@@ -155,6 +155,8 @@ addons/
 addons/**
 miro-timeframe-snapshots/
 miro-timeframe-snapshots/**
+tensorflow-model-garden/
+tensorflow-model-garden/**
 
 
 # PyCharm
