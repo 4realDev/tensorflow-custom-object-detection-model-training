@@ -50,13 +50,15 @@ async def get_all_miro_board_names_and_ids(session):
 
 # GET ALL BOARD ITEMS
 # default limit is maximum (50)
-async def get_all_items(item_type: str, max_num_of_items: int = 50):
-    global global_session
-    global global_board_id
+async def get_all_items(
+    item_type: str,
+    board_id: str,
+    session,
+    max_num_of_items: int = 50
+):
+    url = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D' )}/items?limit={max_num_of_items}&type={item_type}"
 
-    url = f"https://api.miro.com/v2/boards/{global_board_id.replace('=', '%3D' )}/items?limit={max_num_of_items}&type={item_type}"
-
-    async with global_session.get(url, headers=headers) as resp:
+    async with session.get(url, headers=headers) as resp:
         response = await resp.json()
         if DEBUG_PRINT_RESPONSES:
             print(await resp.text())
