@@ -214,16 +214,14 @@ def get_sticky_note_color_class_from_rgb(rgb_color):
     sticky_note_color_class = None
     hue = h
 
-    if hue > 10 and hue < 50:
-        sticky_note_color_class = "orange"
-    if hue > 50 and hue < 100:
+    if hue > 10 and hue < 60:
         sticky_note_color_class = "yellow"
-    elif hue > 100 and hue < 180:
+    elif hue > 60 and hue < 180:
         sticky_note_color_class = "green"
     elif hue > 180 and hue < 290:
         sticky_note_color_class = "blue"
     elif hue > 290 or hue > 0 and hue < 10:
-        sticky_note_color_class = "pink"
+        sticky_note_color_class = "red"
 
     return sticky_note_color_class
 
