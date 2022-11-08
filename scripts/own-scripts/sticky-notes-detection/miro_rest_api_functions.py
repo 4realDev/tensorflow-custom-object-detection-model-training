@@ -168,8 +168,8 @@ async def create_sticky_note(
 
     async with session.post(url=url, json=payload, headers=headers) as resp:
         response = await resp.json()
-        # if DEBUG_PRINT_RESPONSES:
-        print(await resp.text())
+        if DEBUG_PRINT_RESPONSES:
+            print(await resp.text())
 
 
 def create_line(
@@ -200,8 +200,8 @@ def create_line(
     }
 
     response = requests.post(url, json=payload, headers=headers)
-
-    print(response.text)
+    if DEBUG_PRINT_RESPONSES:
+        print(response.text())
 
 
 async def create_image(
@@ -243,8 +243,8 @@ async def create_image(
 
     async with session.post(url=url,  data=data, headers=headers) as resp:
         response = await resp.json()
-        # if DEBUG_PRINT_RESPONSES:
-        print(await resp.text())
+        if DEBUG_PRINT_RESPONSES:
+            print(await resp.text())
 
 
 # CREATE LIST OF ITEMS
