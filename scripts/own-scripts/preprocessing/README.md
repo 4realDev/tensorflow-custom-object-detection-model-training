@@ -25,9 +25,9 @@ Or one of the combinations shown on the official TensorFlow side:
 <https://www.tensorflow.org/install/source_windows>
 
 # Steps overview
-[I. Create Virtual Environment (optional)](#_Toc118295651)
+[I. Create Virtual Environment (optional)](#i-create-virtual-environment-optional)
 
-[II. TensorFlow Installation](#_Toc118295652)
+[II. TensorFlow Installation](#ii-tensorflow-installaation)
 
 [III. Enable GPU Support (optional)](#_Toc118295653)
 
