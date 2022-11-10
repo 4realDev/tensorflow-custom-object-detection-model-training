@@ -27,18 +27,18 @@ Or one of the combinations shown on the official TensorFlow side:
 # Steps overview
 [I. Create Virtual Environment (optional)](#i-create-virtual-environment-optional)
 
-[II. TensorFlow Installation](#ii-tensorflow-installaation)
+[II. TensorFlow Installation](#ii-tensorflow-installation)
 
-[III. Enable GPU Support (optional)](#_Toc118295653)
+[III. Enable GPU Support (optional)](#iii-enable-gpu-support-optional)
 
-[IV. TensorFlow Object Detection API Installation](#_Toc118295654)
+[IV. TensorFlow Object Detection API Installation](#iv-tensorflow-object-detection-api-installation)
 
-[V. Install the TensorFlow Object Detection API](#_Toc118295655)
+[V. Install the TensorFlow Object Detection API](#v-install-the-tensorflow-object-detection-api)
 
 [VI. Copy TFOD API scripts for model training, evaluation and exporting in
-custom script folder](#_Toc118295656)
+custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-and-exporting-in-custom-script-folder)
 
-[VII. Install LabelImg](#_Toc118295657)
+[VII. Install LabelImg](#vii-install-labelimg)
 
 &nbsp;
 &nbsp;
