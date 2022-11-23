@@ -30,38 +30,46 @@ r""" Changing something on the config please re-run all the scripts to create a 
 
     MAIN SCRIPTS
     python C:\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\sticky-notes-detection\miro-sticky-notes-sync.py
+    python C:\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\sticky-notes-detection\miro-sticky-notes-sync.py -n Test -s True
 """
 
 import os
 # labels the custom model detects
+# labels = [{'name': 'sticky_note', 'id': 1}]
+
 labels = [{'name': 'yellow_sticky_note', 'id': 1, 'color': 'yellow'},
           {'name': 'blue_sticky_note', 'id': 2, 'color': 'blue'},
-          {'name': 'pink_sticky_note', 'id': 3, 'color': 'pink'},
+          {'name': 'pink_sticky_note', 'id': 3, 'color': 'red'},
           {'name': 'green_sticky_note', 'id': 4, 'color': 'green'}]
 
 
 # vars necessary for pipeline.config adjustments and for model training
 num_classes = len(labels)
 batch_size = 4
+# num_steps = 2500
+# num_steps = 10000
 num_steps = 25000
 fine_tune_checkpoint_type = "detection"  # "classification" or "detection"
 
+# vars for real time object detection
+min_score_thresh = 0.9
+bounding_box_and_label_line_thickness = 10
+save_original_image_overlayed_with_labeled_detection_bounding_boxes = True
 
 # vars for PADDLE OCR model
 # for german use 'german' -> https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.6/doc/doc_en/quickstart_en.md
 ocr_model_language = "en"
 ocr_confidence_threshold = 0.50
-
-
-# vars for real time object detection
-min_score_thresh = 0.9
-bounding_box_and_label_line_thickness = 10
+save_image_overlayed_with_ocr_visualization = True
 
 
 # file names
+# PRETRAINED_MODEL_NAME = 'efficientdet_d7_coco17_tpu-32'
 PRETRAINED_MODEL_NAME = 'ssd_resnet50_v1_fpn_640x640_coco17_tpu-8'
+# CUSTOM_MODEL_NAME_SUFFIX = 'my_sticky_notes_no_color'
 CUSTOM_MODEL_NAME_SUFFIX = 'my_sticky_notes'
 CUSTOM_MODEL_NAME = f'{CUSTOM_MODEL_NAME_SUFFIX}_{PRETRAINED_MODEL_NAME}_{str(num_steps)}'
+# PRETRAINED_MODEL_URL = 'http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d7_coco17_tpu-32.tar.gz'
 PRETRAINED_MODEL_URL = 'http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8.tar.gz'
 LABEL_MAP_NAME = 'label_map.pbtxt'
 TF_RECORD_SCRIPT_NAME = 'generate_tfrecord.py'
@@ -81,6 +89,7 @@ paths = {
     'MIRO_TIMEFRAME_SNAPSHOTS': os.path.join(BASE_PATH, 'Tensorflow', 'miro-timeframe-snapshots'),
     'ANNOTATION_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'workspace', CUSTOM_MODEL_NAME, 'annotations'),
     'IMAGE_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'workspace', CUSTOM_MODEL_NAME, 'images'),
+    'AUGMENTED_IMAGE_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'workspace', CUSTOM_MODEL_NAME, 'images', 'augmented'),
     'LABELIMG_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'addons', 'labelimg'),
     'MODEL_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'workspace', CUSTOM_MODEL_NAME, 'models'),
     'PRETRAINED_MODEL_PATH': os.path.join(BASE_PATH, 'Tensorflow', 'workspace', CUSTOM_MODEL_NAME, 'pre-trained-models'),
