@@ -83,7 +83,7 @@ def augment_image_with_augmentation_operation(
                 augmented_image_data_array.append({"image": augmented_image_bottom_right, "name": f"bottom-right-{augmented_image_name}"})
                 augmented_image_data_array.append({"image": augmented_image_middle, "name": f"middle-{augmented_image_name}"})
             else:
-                print(f"Error: The augmentation_operation {augmentation_operation} does not exist in augment_image_with_augmentation_operation().")
+                print(f"ERROR: The augmentation_operation {augmentation_operation} does not exist in augment_image_with_augmentation_operation().")
                 return
 
         else:
@@ -99,7 +99,7 @@ def augment_image_with_augmentation_operation(
                     augmented_image = tf.image.adjust_contrast(original_image, contrast_factor=augmentation_operation_value)
 
                 else:
-                    print(f"Error: The augmentation_operation {augmentation_operation} does not exist in augment_image_with_augmentation_operation().")
+                    print(f"ERROR: The augmentation_operation {augmentation_operation} does not exist in augment_image_with_augmentation_operation().")
                     return
 
                 augmented_image_name = f"{str(augmentation_operation_value)}-{augmentation_operation}-augmented-{original_image_name}"
@@ -121,10 +121,10 @@ def augment_image_with_augmentation_operation(
                 if result == True:
                     print(f"File {augmented_image_name} saved successfully")
                 else:
-                    print(f"Error in saving file {augmented_image_name}")
+                    print(f"ERROR in saving file {augmented_image_name}")
 
     else:
-        print(f"Error: Path to {original_image_file_path} is not a regular file.")
+        print(f"ERROR: Path to {original_image_file_path} is not a regular file.")
     # fmt: on
 
 
