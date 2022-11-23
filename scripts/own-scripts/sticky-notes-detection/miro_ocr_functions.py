@@ -1,55 +1,297 @@
+# TEST WITH PADDLEOCR
+# Docs: https://github.com/PaddlePaddle/PaddleOCR
+# PaddleOCR model can run on both CPU and GPU -> able to run on any machine and Colab as well
+# Can be used on shfited (rotated) image
+# Key Feature -> Lightweight, fast model
+
+# 1. Install and Import Dependencies
+# 1.1 GitHub Repo instalation of paddle paddle library (underlying franework)
+# If you have CUDA 9 or CUDA 10 installed on your machine, please run the following command to install
+# python -m pip install paddlepaddle-gpu -i https://mirror.baidu.com/pypi/simple
+# 1.2 Install PaddleOCR Whl Package
+# pip install "paddleocr>=2.0.1"
+# 1.3 Clone paddle OCR repo - to get the FONTS for visualization - NOT DONE (seems to be redudant, when paddles draw_ocr function is not used)
+# git clone https://github.com/PaddlePaddle/PaddleOCR.git
+# 2. Instantiate OCR Model and Detect
+# Extract text from images
 
 import config
 from typing import Tuple
 from cv2 import Mat
-import colorsys
-from dataclasses import dataclass
 import numpy as np
-from PIL import Image
 from datetime import date, datetime
 import os
-from random import random
 import cv2
 import matplotlib.pyplot as plt
 from paddleocr import PaddleOCR
-import asyncio
 import nest_asyncio
 
 nest_asyncio.apply()
 
-# def opencv_script_thresholding(img_path):
-#     img = cv2.imread(img_path, 0)
-#     # global thresholding
-#     ret1, th1 = cv2.threshold(img, 110, 255, cv2.THRESH_BINARY)
-#     # Otsu's thresholding
-#     ret2, th2 = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-#     # Otsu's thresholding after Gaussian filtering
-#     blur = cv2.GaussianBlur(img, (5, 5), 0)
-#     ret3, th3 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-#     # plot all the images and their histograms
-#     images = [img, 0, th1,
-#               img, 0, th2,
-#               blur, 0, th3]
-#     titles = ['Original Noisy Image', 'Histogram', 'Global Thresholding (v=127)',
-#               'Original Noisy Image', 'Histogram', "Otsu's Thresholding",
-#               'Gaussian filtered Image', 'Histogram', "Otsu's Thresholding"]
-#     for i in range(3):
-#         plt.subplot(3, 3, i*3+1), plt.imshow(images[i*3], 'gray')
-#         plt.title(titles[i*3]), plt.xticks([]), plt.yticks([])
-#         plt.subplot(3, 3, i*3+2), plt.hist(images[i*3].ravel(), 256)
-#         plt.title(titles[i*3+1]), plt.xticks([]), plt.yticks([])
-#         plt.subplot(3, 3, i*3+3), plt.imshow(images[i*3+2], 'gray')
-#         plt.title(titles[i*3+2]), plt.xticks([]), plt.yticks([])
-#     plt.show()
-
-# https://www.geeksforgeeks.org/erosion-dilation-images-using-opencv-python/
-
 
 # VARS FOR PADDLE OCR MODEL
-ocr_model = PaddleOCR(lang=config.ocr_model_language)
+ocr_model = PaddleOCR(lang=config.ocr_model_language,
+                      use_angle_cls=True, show_log=False)
 ocr_confidence_threshold = config.ocr_confidence_threshold
 
 paths = config.paths
+
+
+def get_timestamp_yyyy_mm_dd_hh_mm_ss() -> str:
+    return (str(date.today().year) + '-' +
+            str(date.today().month).zfill(2) + '-' +
+            str(date.today().day).zfill(2) + '-' +
+            str(datetime.now().hour) + '-' +
+            str(datetime.now().minute) + '-' +
+            str(datetime.now().second))
+
+
+# Use the given timestamp to create a special folder for the original image,
+# the original image with the detected sticky note bounding boxes
+# and a crop images for every detected sticky note in the original image
+def create_timestamp_folder_and_return_its_path(folder_name: str) -> str:
+    recognized_images_timestamp_folder_path: str = os.path.join(
+        paths['MIRO_TIMEFRAME_SNAPSHOTS'], folder_name)
+
+    # TODO: FIND BETTER FOLDER STRUCTURE LOGIC
+    if not os.path.exists(paths['MIRO_TIMEFRAME_SNAPSHOTS']):
+        os.mkdir(paths['MIRO_TIMEFRAME_SNAPSHOTS'])
+
+    if not os.path.exists(recognized_images_timestamp_folder_path):
+        os.mkdir(recognized_images_timestamp_folder_path)
+
+    return recognized_images_timestamp_folder_path
+
+
+# Saves the image img with the name img_name inside the folder with the path folder_path
+def save_image_in_folder(img: np.ndarray, img_name: str, folder_path: str) -> None:
+    img_path = os.path.join(folder_path, img_name)
+    result: bool = cv2.imwrite(img_path, img)
+    if result == True:
+        print(f"File {img_name} saved successfully")
+    else:
+        print(f"Error in saving file {img_name}")
+
+
+# TODO: DELETE IF UNUSED
+debug_image_count = 0
+
+
+def save_image_with_detection_for_debug(img: np.ndarray, img_file_path: str) -> None:
+    if os.path.isfile(img_file_path):
+        global debug_image_count
+        debug_image_count = debug_image_count + 1
+        original_image_with_timestamp_name: str = f"{debug_image_count}_{config.CUSTOM_MODEL_NAME_SUFFIX}_{str(config.num_steps)}.png"
+        result: bool = cv2.imwrite(os.path.join(
+            config.paths['MIRO_TIMEFRAME_SNAPSHOTS'], original_image_with_timestamp_name), img)
+
+        if result == True:
+            print(
+                f"File {original_image_with_timestamp_name} saved successfully")
+        else:
+            print(
+                f"Error in saving file {original_image_with_timestamp_name}")
+
+
+# Saves a cropped image for every detected sticky note bounding box inside the original image
+# with the detection bounding-box coordinates from img_detection_data_list
+# and return a list with the temporary name of the image, the position of the bounding box and the detected color
+def crop_image_to_bounding_boxes(
+        img: np.ndarray,
+        img_detection_data_list,
+) -> list:
+
+    cropped_images_data = []
+
+    for index, img_detection_data in enumerate(img_detection_data_list):
+        ymin = img_detection_data['ymin']
+        ymax = img_detection_data['ymax']
+        xmin = img_detection_data['xmin']
+        xmax = img_detection_data['xmax']
+        color = img_detection_data['color']
+
+        cropped_img_according_to_its_bounding_box = img[ymin:ymax, xmin:xmax]
+
+        cropped_img_according_to_its_bounding_box_name = f"cropped_image_{index}.png"
+
+        cropped_images_data.append(
+            {
+                "position": {"ymin": ymin, "xmin": xmin, "ymax": ymax, "xmax": xmax},
+                "color": color,
+                "name": cropped_img_according_to_its_bounding_box_name,
+                "ocr_recognized_text": "",
+                "image": cropped_img_according_to_its_bounding_box
+            })
+    return cropped_images_data
+
+
+# Euclidean distance: Given list of points on 2-D plane and an integer K (origin of the coordinate system (0,0))
+# Calculate distance to K to find the closest points to the origin
+# √{(x2-x1)2 + (y2-y1)2}
+def euclidean(text_and_boxes_array):
+    xmin = text_and_boxes_array['position']['xmin']
+    ymin = text_and_boxes_array['position']['ymin']
+    coor_origin_x = 0
+    coor_origin_y = 0
+    return ((xmin - coor_origin_x)**2 + (ymin - coor_origin_y)**2)**0.5
+
+
+async def get_image_ocr_data(
+    img_path,
+    ocr_confidence_threshold=ocr_confidence_threshold,
+) -> Tuple[list, Mat]:
+    result = ocr_model.ocr(img_path)
+
+    # convert all text into array
+    # text_array = [res[1][0] for res in result]
+    # print("\n \n \n")
+    # for text in text_array:
+    #     print(text)
+
+    # Extracting detected components
+    boxes = [res[0] for res in result]
+    texts = [res[1][0] for res in result]
+    scores = [res[1][1] for res in result]
+
+    # TODO: FIND OUT IF CONVERTION IS REALLY NEEDED - MESSES UP SAVED FILES
+    # By default if we import image using openCV, the image will be in BGR
+    # But we want to reorder the color channel to RGB for the draw_ocd method
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
+
+    ocr_recognized_text_and_boxes_array = []
+
+    # Visualize image and detections
+    for i in range(len(result)):
+        if scores[i] > ocr_confidence_threshold:
+            (xmin, ymin, xmax, ymax) = (
+                int(boxes[i][0][0]),
+                int(boxes[i][1][1]),
+                int(boxes[i][2][0]),
+                int(boxes[i][3][1]))
+
+            # position is necessary for the euclidean distance sorting of the textes
+            # (and for the visualization of the bounding boxes if save_image_overlayed_with_ocr_visualization is true)
+            ocr_recognized_text_and_boxes_array.append(
+                {"position": {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax},
+                 "text": texts[i]}
+            )
+
+    # Use euclidean distance to sort the words in the correct order from top left to bottom right
+    ocr_recognized_text_and_boxes_array.sort(key=euclidean)
+
+    return ocr_recognized_text_and_boxes_array
+
+
+# Visualize ocr bounding boxes and the labels provided in ocr_recognized_text_and_boxes_array inside the image with img_path
+# (optional function - only when save_image_overlayed_with_ocr_visualization flag is true)
+def get_image_with_overlayed_ocr_bounding_boxes_and_text(img_path: str, ocr_recognized_text_and_boxes_array):
+    img = cv2.imread(img_path)
+    for ocr_recognized_text_and_box in ocr_recognized_text_and_boxes_array:
+        xmin = ocr_recognized_text_and_box['position']['xmin']
+        ymin = ocr_recognized_text_and_box['position']['ymin']
+        xmax = ocr_recognized_text_and_box['position']['xmax']
+        ymax = ocr_recognized_text_and_box['position']['ymax']
+        text = ocr_recognized_text_and_box['text']
+
+        img = cv2.rectangle(
+            img=img,
+            pt1=(xmin, ymin),
+            pt2=(xmax, ymax),
+            color=(255, 255, 255),
+            thickness=2,
+            lineType=cv2.LINE_AA)
+
+        img = cv2.putText(
+            img=img,
+            text=text,
+            org=(int(xmin + 5), int(ymin - 5)),
+            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+            fontScale=0.5,
+            color=(255, 255, 255),
+            thickness=1,
+            lineType=cv2.LINE_AA)
+    return img
+
+
+# Remove forbidden printable ASCII characters from file name:
+# < > : " / \ | ? * '
+def remove_forbidden_ascii_characters(string: str) -> str:
+    forbidden_characters = ['<', '>', ':',
+                            '"', "\'", '/', '\\', '|', '?', '*']
+    for forbidden_character in forbidden_characters:
+        if forbidden_character in string:
+            string = string.replace(
+                forbidden_character, "")
+
+    return string
+
+
+# Create single string out of all ocr data bounding boxes
+def extract_string_out_of_ocr_data(
+    cropped_image: list
+) -> str:
+    image_ocr_text = ""
+    for ocr_text_and_boxes in cropped_image['ocr_data']:
+        image_ocr_text = image_ocr_text + \
+            ocr_text_and_boxes['text'] + " "
+    return image_ocr_text
+
+
+def rename_cropped_image_with_ocr_string(cropped_image: list, index: int, image_file_path, timestamped_folder_path: str):
+    new_image_file_name = f"{index}_{cropped_image['ocr_recognized_text']}"
+    new_image_file_name = remove_forbidden_ascii_characters(
+        new_image_file_name)
+    new_image_file_path = os.path.join(
+        timestamped_folder_path, f"{new_image_file_name}.png")
+    os.rename(image_file_path, new_image_file_path)
+    return [new_image_file_name, new_image_file_path]
+
+
+# NOT IN USE!!!
+
+
+# WAS USED, BUT IS CURRENTLY NOT IN USE
+# Get dominant color and assign it to miro sticky note color class
+# sticky_note_dominant_rgb_color = get_dominant_color(new_image_file_name_with_ocr_text_in_file_name)
+# sticky_note_color_class = get_sticky_note_color_class_from_rgb(sticky_note_dominant_rgb_color)
+
+# resize image down to 1 pixel.
+# def get_dominant_color(img_path):
+#     img = Image.open(img_path)
+#     img = img.convert("RGB")
+#     img = img.resize((1, 1), resample=0)
+#     dominant_rgb_color = img.getpixel((0, 0))
+#     return dominant_rgb_color
+
+
+# def rgb_to_hsv(r, g, b) -> Tuple[int, int, int]:
+#     temp = colorsys.rgb_to_hsv(r, g, b)
+#     h = int(temp[0] * 360)
+#     s = int(temp[1] * 100)
+#     v = round(temp[2] * 100 / 255)
+#     return [h, s, v]
+
+
+# def get_sticky_note_color_class_from_rgb(rgb_color):
+#     [h, s, v] = rgb_to_hsv(
+#         rgb_color[0],   # r
+#         rgb_color[1],   # g
+#         rgb_color[2]    # b
+#     )
+
+#     sticky_note_color_class = None
+#     hue = h
+
+#     if hue > 10 and hue < 60:
+#         sticky_note_color_class = "yellow"
+#     elif hue > 60 and hue < 180:
+#         sticky_note_color_class = "green"
+#     elif hue > 180 and hue < 290:
+#         sticky_note_color_class = "blue"
+#     elif hue > 290 or hue > 0 and hue < 10:
+#         sticky_note_color_class = "red"
+
+#     return sticky_note_color_class
 
 
 def morphology_closing_operation(img):
@@ -81,288 +323,35 @@ def morphology_opening_operation(img):
 
     return img_opened
 
-# TEST WITH PADDLEOCR
-# Docs: https://github.com/PaddlePaddle/PaddleOCR
-# PaddleOCR model can run on both CPU and GPU -> able to run on any machine and Colab as well
-# Can be used on shfited (rotated) image
-# Key Feature -> Lightweight, fast model
 
-# 1. Install and Import Dependencies
-# 1.1 GitHub Repo instalation of paddle paddle library (underlying franework)
-# If you have CUDA 9 or CUDA 10 installed on your machine, please run the following command to install
-# python -m pip install paddlepaddle-gpu -i https://mirror.baidu.com/pypi/simple
-# 1.2 Install PaddleOCR Whl Package
-# pip install "paddleocr>=2.0.1"
-# 1.3 Clone paddle OCR repo - to get the FONTS for visualization - NOT DONE (seems to be redudant, when paddles draw_ocr function is not used)
-# git clone https://github.com/PaddlePaddle/PaddleOCR.git
-# 2. Instantiate OCR Model and Detect
-# Extract text from images
+# def opencv_script_thresholding(img_path):
+#     img = cv2.imread(img_path, 0)
+#     # global thresholding
+#     ret1, th1 = cv2.threshold(img, 110, 255, cv2.THRESH_BINARY)
+#     # Otsu's thresholding
+#     ret2, th2 = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+#     # Otsu's thresholding after Gaussian filtering
+#     blur = cv2.GaussianBlur(img, (5, 5), 0)
+#     ret3, th3 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+#     # plot all the images and their histograms
+#     images = [img, 0, th1,
+#               img, 0, th2,
+#               blur, 0, th3]
+#     titles = ['Original Noisy Image', 'Histogram', 'Global Thresholding (v=127)',
+#               'Original Noisy Image', 'Histogram', "Otsu's Thresholding",
+#               'Gaussian filtered Image', 'Histogram', "Otsu's Thresholding"]
+#     for i in range(3):
+#         plt.subplot(3, 3, i*3+1), plt.imshow(images[i*3], 'gray')
+#         plt.title(titles[i*3]), plt.xticks([]), plt.yticks([])
+#         plt.subplot(3, 3, i*3+2), plt.hist(images[i*3].ravel(), 256)
+#         plt.title(titles[i*3+1]), plt.xticks([]), plt.yticks([])
+#         plt.subplot(3, 3, i*3+3), plt.imshow(images[i*3+2], 'gray')
+#         plt.title(titles[i*3+2]), plt.xticks([]), plt.yticks([])
+#     plt.show()
 
-
-def get_timestamp_yyyy_mm_dd_hh_mm_ss() -> str:
-    return (str(date.today().year) + '-' +
-            str(date.today().month).zfill(2) + '-' +
-            str(date.today().day).zfill(2) + '-' +
-            str(datetime.now().hour) + '-' +
-            str(datetime.now().minute) + '-' +
-            str(datetime.now().second))
-
-
-def create_timestamp_folder_and_return_its_path(timestamp: str) -> str:
-    recognized_images_timestamp_folder_path: str = os.path.join(
-        paths['MIRO_TIMEFRAME_SNAPSHOTS'], timestamp)
-    # f"C:\\Users\\vbraz\\Desktop\\sticky-notes-downloaded-images\\IMAGE_DATA_STICKY_NOTES\\{timestamp}"
-
-    # TODO: FIND BETTER FOLDER STRUCTURE LOGIC
-    if not os.path.exists(paths['MIRO_TIMEFRAME_SNAPSHOTS']):
-        os.mkdir(paths['MIRO_TIMEFRAME_SNAPSHOTS'])
-
-    if not os.path.exists(recognized_images_timestamp_folder_path):
-        os.mkdir(recognized_images_timestamp_folder_path)
-
-    return recognized_images_timestamp_folder_path
+# https://www.geeksforgeeks.org/erosion-dilation-images-using-opencv-python/
 
 
-def save_image_with_timestamp(img: np.ndarray, img_file_path: str, timestamp: str, timestamped_folder_path: str, suffix="") -> None:
-    if os.path.isfile(img_file_path):
-        original_image_with_timestamp_name: str = f"{timestamp}{suffix}.png"
-        result: bool = cv2.imwrite(os.path.join(
-            timestamped_folder_path, original_image_with_timestamp_name), img)
-
-        if result == True:
-            print(
-                f"File {original_image_with_timestamp_name} saved successfully")
-        else:
-            print(
-                f"Error in saving file {original_image_with_timestamp_name}")
-
-
-def crop_and_save_recognized_images(
-        img: np.ndarray,
-        img_detection_bounding_boxes,
-        timestamped_folder_path: str) -> list:
-
-    cropped_images_data = []
-
-    for index, img_detection_bounding_box in enumerate(img_detection_bounding_boxes):
-        ymin = img_detection_bounding_box['ymin']
-        ymax = img_detection_bounding_box['ymax']
-        xmin = img_detection_bounding_box['xmin']
-        xmax = img_detection_bounding_box['xmax']
-        # color = img_detection_bounding_box['color']
-
-        cropped_img_according_to_its_bounding_box = img[ymin:ymax, xmin:xmax]
-
-        cropped_img_according_to_its_bounding_box_name = f"cropped_image_{index}.png"
-
-        cropped_images_data.append(
-            {
-                "position": {"ymin": ymin, "xmin": xmin, "ymax": ymax, "xmax": xmax},
-                # "color": color,
-                "name": cropped_img_according_to_its_bounding_box_name,
-                "ocr_recognized_text": "",
-            })
-
-        result = cv2.imwrite(os.path.join(
-            timestamped_folder_path, cropped_img_according_to_its_bounding_box_name), cropped_img_according_to_its_bounding_box)
-
-        if result == True:
-            print(
-                f"File {cropped_img_according_to_its_bounding_box_name} saved successfully")
-        else:
-            print(
-                f"Error in saving file {cropped_img_according_to_its_bounding_box_name}")
-
-    return cropped_images_data
-
-
-def remove_forbidden_ascii_characters(string: str) -> str:
-    forbidden_characters = ['<', '>', ':',
-                            '"', "\'", '/', '\\', '|', '?', '*']
-    for forbidden_character in forbidden_characters:
-        if forbidden_character in string:
-            string = string.replace(
-                forbidden_character, "")
-
-    return string
-
-
-# resize image down to 1 pixel.
-def get_dominant_color(img_path):
-    img = Image.open(img_path)
-    img = img.convert("RGB")
-    img = img.resize((1, 1), resample=0)
-    dominant_rgb_color = img.getpixel((0, 0))
-    return dominant_rgb_color
-
-
-def rgb_to_hsv(r, g, b) -> Tuple[int, int, int]:
-    temp = colorsys.rgb_to_hsv(r, g, b)
-    h = int(temp[0] * 360)
-    s = int(temp[1] * 100)
-    v = round(temp[2] * 100 / 255)
-    return [h, s, v]
-
-
-def get_sticky_note_color_class_from_rgb(rgb_color):
-    [h, s, v] = rgb_to_hsv(
-        rgb_color[0],   # r
-        rgb_color[1],   # g
-        rgb_color[2]    # b
-    )
-
-    sticky_note_color_class = None
-    hue = h
-
-    if hue > 10 and hue < 60:
-        sticky_note_color_class = "yellow"
-    elif hue > 60 and hue < 180:
-        sticky_note_color_class = "green"
-    elif hue > 180 and hue < 290:
-        sticky_note_color_class = "blue"
-    elif hue > 290 or hue > 0 and hue < 10:
-        sticky_note_color_class = "red"
-
-    return sticky_note_color_class
-
-
-async def get_image_text_data_by_ocr_for_each_file_in_timestamped_folder_and_save_it(
-    cropped_images_data: list,
-    timestamped_folder_path: str,
-    ocr_confidence_threshold=0.5,
-    visualize_text_in_image=False
-) -> list:
-    for index, cropped_image_data in enumerate(cropped_images_data):
-        image_file_path = os.path.join(
-            timestamped_folder_path, cropped_image_data['name'])
-        # checking if it is a file
-        if os.path.isfile(image_file_path):
-            [image_ocr_data_array, image_with_ocr_data_visualization] = await asyncio.create_task(
-                get_image_text_data_by_ocr(
-                    image_file_path,
-                    ocr_confidence_threshold,
-                    visualize_text_in_image=False
-                )
-            )
-            cv2.imwrite(image_file_path, image_with_ocr_data_visualization)
-
-            # get every ocr bounding box and create a string collecting all ocr bounding boxes
-            image_ocr_text = ""
-            for image_ocr_data in image_ocr_data_array:
-                image_ocr_text = image_ocr_text + \
-                    image_ocr_data['text'] + " "
-
-            new_image_file_name = f"{index}_{image_ocr_text}"
-
-            # fmt: off
-            # remove forbidden printable ASCII characters from file name:
-            # < > : " / \ | ? * '
-            new_image_file_name = remove_forbidden_ascii_characters(new_image_file_name)
-
-            new_image_file_name_with_ocr_information_path = os.path.join(
-                timestamped_folder_path, 
-                f"{new_image_file_name}.png"
-            )
-
-            os.rename(image_file_path, new_image_file_name_with_ocr_information_path)
-
-            sticky_note_dominant_rgb_color = get_dominant_color(new_image_file_name_with_ocr_information_path)
-            sticky_note_color_class = get_sticky_note_color_class_from_rgb(sticky_note_dominant_rgb_color)
-
-            # override cropped_image_data with new data from text and color recognition
-            cropped_image_data['name'] = new_image_file_name
-            cropped_image_data['ocr_recognized_text'] = image_ocr_text
-            cropped_image_data['color'] = sticky_note_color_class
-            cropped_image_data['path'] = new_image_file_name_with_ocr_information_path
-            # fmt: on
-
-    if visualize_text_in_image:
-        cv2.waitKey(0)
-        if cv2.waitKey(10) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
-
-    return cropped_images_data
-
-
-# Euclidean distance: Given list of points on 2-D plane and an integer K (origin of the coordinate system (0,0))
-# Calculate distance to K to find the closest points to the origin
-# √{(x2-x1)2 + (y2-y1)2}
-def euclidean(text_and_boxes_array):
-    xmin = text_and_boxes_array['position']['xmin']
-    ymin = text_and_boxes_array['position']['ymin']
-    coor_origin_x = 0
-    coor_origin_y = 0
-    return ((xmin - coor_origin_x)**2 + (ymin - coor_origin_y)**2)**0.5
-
-
-async def get_image_text_data_by_ocr(img_path, ocr_confidence_threshold=ocr_confidence_threshold, visualize_text_in_image=True) -> Tuple[list, Mat]:
-    result = ocr_model.ocr(img_path)
-
-    # convert all text into array
-    # text_array = [res[1][0] for res in result]
-    # print("\n \n \n")
-    # for text in text_array:
-    #     print(text)
-
-    # Extracting detected components
-    boxes = [res[0] for res in result]
-    texts = [res[1][0] for res in result]
-    scores = [res[1][1] for res in result]
-
-    # Import image
-    img = cv2.imread(img_path)
-
-    # TODO: FIND OUT IF CONVERTION IS REALLY NEEDED - MESSES UP SAVED FILES
-    # By default if we import image using openCV, the image will be in BGR
-    # But we want to reorder the color channel to RGB for the draw_ocd method
-    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
-
-    text_and_boxes_array = []
-
-    # Visualize image and detections
-    for i in range(len(result)):
-        if scores[i] > ocr_confidence_threshold:
-            (xmin, ymin, xmax, ymax) = (
-                int(boxes[i][0][0]),
-                int(boxes[i][1][1]),
-                int(boxes[i][2][0]),
-                int(boxes[i][3][1]))
-
-            text_and_boxes_array.append(
-                {"position": {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax},
-                 "text": texts[i]}
-            )
-
-            if visualize_text_in_image:
-                img = cv2.rectangle(
-                    img=img,
-                    pt1=(xmin, ymin),
-                    pt2=(xmax, ymax),
-                    color=(255, 255, 255),
-                    thickness=2,
-                    lineType=cv2.LINE_AA)
-
-                img = cv2.putText(
-                    img=img,
-                    text=texts[i],
-                    org=(int(xmin + 5), int(ymin - 5)),
-                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                    fontScale=0.5,
-                    color=(255, 255, 255),
-                    thickness=1,
-                    lineType=cv2.LINE_AA)
-
-    # Ensure that order of words is correct by sorting  after their euclidean distance
-    text_and_boxes_array.sort(key=euclidean)
-
-    if visualize_text_in_image:
-        # cv2.namedWindow(f"OCR of {img_path}", cv2.WINDOW_NORMAL)
-        cv2.imshow(f"OCR of {random()}", img)
-
-    return [text_and_boxes_array, img]
-
-
-# NOT IN USE!!!
 def opencv_script_thresholding(img_path):
     img = cv2.imread(img_path, 0)
 

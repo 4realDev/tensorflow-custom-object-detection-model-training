@@ -85,7 +85,9 @@ def detect_fn(image):
 
 
 # use the detection model to preprocess, predict and postprocess image to get detections
+# Uses the detection model inside TensorFlow detect_fn(image)
 def get_detections_from_img(image):
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image_np = np.array(image)
     # converting image into tensor object
     input_tensor = tf.convert_to_tensor(
@@ -101,8 +103,10 @@ def get_bounding_boxes_above_min_score_thresh(detections, imgHeight, imgWidth, m
     for index, detection_score in enumerate(detections['detection_scores'][0]):
         if detection_score > min_score_thresh:
             scanned_object_detection_box = detections['detection_boxes'][0][index]
-            # scanned_object_class = int(
-            #     detections['detection_classes'][0][index] + 1)
+            scanned_object_class_index = int(
+                detections['detection_classes'][0][index])
+            scanned_object_class_color = config.labels[scanned_object_class_index]['color']
+            scanned_object_class_name = config.labels[scanned_object_class_index]['name']
 
             # values of bounding-boxes must be treated as relative coordinates to the image instead as absolute
             ymin = round(float(scanned_object_detection_box[0] * imgHeight))
@@ -120,7 +124,8 @@ def get_bounding_boxes_above_min_score_thresh(detections, imgHeight, imgWidth, m
                 "xmin": xmin,
                 "ymax": ymax,
                 "xmax": xmax,
-                # "color": formated_scanned_object_label[0]['color']
+                "classname": scanned_object_class_name,
+                "color": scanned_object_class_color
             }
 
             # print(f"- bounding boxes (relative): {scanned_object_data} \n")
@@ -132,13 +137,16 @@ def get_bounding_boxes_above_min_score_thresh(detections, imgHeight, imgWidth, m
 
 
 # returns the given image with its overlay labeled bounding boxes from the passed detections (formatted with scores and label names)
+# Uses viz_utils.visualize_boxes_and_labels_on_image_array from the object_detection/utils package from tensorflow to
+# "Overlay labeled boxes on an image with formatted scores and label names."
+
 def get_image_with_overlayed_labeled_bounding_boxes(
     image,
     detections,
     category_index=category_index,
     min_score_thresh=min_score_thresh,
     line_thickness=bounding_box_and_label_line_thickness,
-    visualize_overlayed_labeled_bounding_boxes_in_image=True
+    visualize_overlayed_labeled_bounding_boxes_in_image=False
 ):
     image_np = np.array(image)
 
