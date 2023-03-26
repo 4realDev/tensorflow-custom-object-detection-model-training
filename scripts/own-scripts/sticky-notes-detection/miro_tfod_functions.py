@@ -1,34 +1,34 @@
-
 # pip install aiohttp
 # pip install nest-asyncio
-# cd Tensorflow\scripts & python miro-sticky-notes-sync.py
+# cd Tensorflow\scripts & python miro_sticky_notes_sync.py
 
-import config
+#fmt: off
+import sys
+import keyboard
 import nest_asyncio
 import asyncio
 import aiohttp
 from miro_rest_api_functions import \
-    get_all_miro_board_names_and_ids, \
-    get_all_items, delete_item, \
+    get_all_items, \
     delete_all_items, \
-    create_sticky_note, \
-    create_all_sticky_notes, \
-    create_new_miro_board_or_get_existing
+    create_sticky_note
 import tensorflow as tf
 from object_detection.utils import label_map_util
 from object_detection.utils import visualization_utils as viz_utils
 from object_detection.builders import model_builder
 from object_detection.utils import config_util
 import os
-import matplotlib.pyplot as plt
 import cv2
 import numpy as np
-from os.path import isfile, join
-from os import listdir
 import re
 
 nest_asyncio.apply()
 
+sys.path.insert(
+    1, '..\scripts\own-scripts\preprocessing')
+
+import config
+#fmt: on
 
 files = config.files
 paths = config.paths
@@ -52,7 +52,7 @@ bounding_box_and_label_line_thickness = config.bounding_box_and_label_line_thick
 # Necessary for any visual detection
 def get_maximum_trained_model_checkpoint():
     maximum_ckpt_number = -1
-    for file in listdir(paths['CUSTOM_MODEL_PATH']):
+    for file in os.listdir(paths['CUSTOM_MODEL_PATH']):
         try:
             file_ckpt_number = int(
                 re.search(r'ckpt-(.*).index', file).group(1))
@@ -146,7 +146,7 @@ def get_image_with_overlayed_labeled_bounding_boxes(
     category_index=category_index,
     min_score_thresh=min_score_thresh,
     line_thickness=bounding_box_and_label_line_thickness,
-    visualize_overlayed_labeled_bounding_boxes_in_image=False
+    # visualize_overlayed_labeled_bounding_boxes_in_image=False
 ):
     image_np = np.array(image)
 
@@ -177,30 +177,31 @@ def get_image_with_overlayed_labeled_bounding_boxes(
         agnostic_mode=False,
         line_thickness=line_thickness)
 
-    if visualize_overlayed_labeled_bounding_boxes_in_image:
-        # TODO: plt.show seems not to work, replace it with cv2.imshow?
-        # plt.imshow(cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB))
-        # plt.show()
-        cv2.imshow("Visualize bounding-box detections in image",
-                   image_np_with_detections)
-        # waits for user to press any key
-        # (this is necessary to avoid Python kernel form crashing)
-        cv2.waitKey(0)
+    # if visualize_overlayed_labeled_bounding_boxes_in_image:
+    #     # plt.imshow(cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB))
+    #     # plt.show()
+    #     cv2.imshow("Visualize bounding-box detections in image",
+    #                image_np_with_detections)
+    #     # waits for user to press any key
+    #     # (this is necessary to avoid Python kernel form crashing)
+    #     cv2.waitKey(0)
 
-        if cv2.waitKey(10) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
+    #     if cv2.waitKey(10) & 0xFF == ord('q'):
+    #         cv2.destroyAllWindows()
 
     return image_np_with_detections
 
 
-# NOT IN USE!!!
-async def scan_for_object_in_video(print_results: bool):
+async def scan_for_object_in_video(session: aiohttp.client.ClientSession):
     # ValueError: 'images' must have either 3 or 4 dimensions. -> could be related to wrong source of VideoCapture!
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(2)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     scan_condition = cap.isOpened()
-    storaged_scanned_object_detection_boxes = []
+    # storaged_scanned_object_detection_boxes = []
+
+    print(
+        "Press the key 'c' to start the creation of the miro backup.")
 
     while scan_condition:
         # await asyncio.sleep(1)
@@ -209,25 +210,28 @@ async def scan_for_object_in_video(print_results: bool):
         frame_detections_np_with_detections = get_image_with_overlayed_labeled_bounding_boxes(
             frame,
             frame_detections,
-            category_index,
-            min_score_thresh=min_score_thresh,
-            line_thickness=bounding_box_and_label_line_thickness,
-            print_results=print_results
         )
 
         cv2.imshow('object detection',  cv2.resize(
             frame_detections_np_with_detections, (800, 600)))
+
+        if keyboard.is_pressed("c"):
+            print("Starting the creation of the miro backup.")
+            await asyncio.create_task(run_miro_sync_process(frame, session))
 
         if cv2.waitKey(10) & 0xFF == ord('q'):
             cap.release()
             cv2.destroyAllWindows()
             break
 
-        formatted_scanned_object_detection_boxes = get_bounding_boxes_above_min_score_thresh(
-            detections=frame_detections, imgHeight=height, imgWidth=width)
+    return
 
-        print(
-            f"formatted_scanned_object_detection_boxes {formatted_scanned_object_detection_boxes}")
+    formatted_scanned_object_detection_boxes = get_bounding_boxes_above_min_score_thresh(
+        detections=frame_detections, imgHeight=height, imgWidth=width)
+
+    print(
+        f"formatted_scanned_object_detection_boxes {formatted_scanned_object_detection_boxes}")
+
 
 #         if len(formatted_scanned_object_detection_boxes) > len(storaged_scanned_object_detection_boxes):
 #             storaged_scanned_object_detection_boxes = formatted_scanned_object_detection_boxes.copy()
@@ -251,20 +255,20 @@ async def scan_for_object_in_video(print_results: bool):
 
 
 #         # get all miro board items
-        board_items = await asyncio.create_task(get_all_items())
+    board_items = await asyncio.create_task(get_all_items())
 
-        # compare miro board item count with real world item count
-        # add missing items to miro board
-        board_items_count = len(board_items)
-        last_index = len(formatted_scanned_object_detection_boxes)
-        print(f"Identify {board_items_count} miro sticky note widgets from the scanned {len(formatted_scanned_object_detection_boxes)} sticky notes in real world")
+    # compare miro board item count with real world item count
+    # add missing items to miro board
+    board_items_count = len(board_items)
+    last_index = len(formatted_scanned_object_detection_boxes)
+    print(f"Identify {board_items_count} miro sticky note widgets from the scanned {len(formatted_scanned_object_detection_boxes)} sticky notes in real world")
 
-        await asyncio.create_task(delete_all_items())
-        while board_items_count < len(formatted_scanned_object_detection_boxes):
-            if len(formatted_scanned_object_detection_boxes) > 0:
-                await asyncio.create_task(create_sticky_note(formatted_scanned_object_detection_boxes[last_index - 1]))
-                last_index = last_index - 1
-                board_items_count = board_items_count + 1
+    await asyncio.create_task(delete_all_items())
+    while board_items_count < len(formatted_scanned_object_detection_boxes):
+        if len(formatted_scanned_object_detection_boxes) > 0:
+            await asyncio.create_task(create_sticky_note(formatted_scanned_object_detection_boxes[last_index - 1]))
+            last_index = last_index - 1
+            board_items_count = board_items_count + 1
 
 
 #                 for data in scanned_object_data_list:

@@ -527,8 +527,7 @@ async def scan_for_object_in_video(print_results: bool):
 
 
 # Create new Miro-Board if no Board with given name exists, else return the id or the existing one
-async def create_new_miro_board_or_get_existing(name: str, description: str):
-    global global_session
+async def create_new_miro_board_or_get_existing(name: str, description: str, save_in_existing_miro_board: bool, session):
 
     board_names_and_ids = await asyncio.create_task(get_all_miro_board_names_and_ids())
 
@@ -557,7 +556,7 @@ async def create_new_miro_board_or_get_existing(name: str, description: str):
         }
     }
 
-    async with global_session.post(url, json=payload, headers=headers) as resp:
+    async with session.post(url, json=payload, headers=headers) as resp:
         response = await resp.json()
         if DEBUG_PRINT_RESPONSES:
             print(await resp.text())

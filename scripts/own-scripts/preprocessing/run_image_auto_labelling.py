@@ -1,3 +1,6 @@
+# (in scripts) python own-scripts\preprocessing\run_image_auto_labelling.py -imgp C:\Users\vbraz\Desktop\ML_Images_21-02-23 -mth 0.9
+# IMPORTANT: running this script via console, make sure you are in scripts direcory!
+
 # This library can be used to create image annotation XML files in the PASCAL VOC file format.
 # fmt: off
 import os
@@ -11,26 +14,48 @@ from pascal_voc_writer import Writer
 from PIL import Image
 
 sys.path.insert(
-    1, '..\scripts\own-scripts\sticky-notes-detection')
+    1, '..\..\scripts\own-scripts\sticky-notes-detection')
 
 from miro_tfod_functions import (
     get_bounding_boxes_above_min_score_thresh, get_detections_from_img,
-    get_image_with_overlayed_labeled_bounding_boxes,
-    load_latest_checkpoint_of_custom_object_detection_model,
-    scan_for_object_in_video)
+    load_latest_checkpoint_of_custom_object_detection_model)
 
 files = config.files
 paths = config.paths
 min_score_thresh = config.min_score_thresh
 bounding_box_and_label_line_thickness = config.bounding_box_and_label_line_thickness
 
+import argparse
+
+parser = argparse.ArgumentParser(
+    description="Script to auto-generate labeled Pascal XML Files for images")
+parser.add_argument("-imgp",
+                    "--images_path",
+                    help="Path to the folder where the images are stored.",
+                    metavar='simages_path', 
+                    type=str, 
+                    default=None,
+                    required=True)
+parser.add_argument("-mth",
+                    "--min_threshold",
+                    metavar='min_threshold', 
+                    help="Minimal Thredhold for the TensorFlow Object Detection inside the images.",
+                    type=float, 
+                    default=min_score_thresh)
+
+
+args = parser.parse_args()
 
 def auto_label_images(images_path: str, min_score_thresh: float):
     # get the path or directory
     for image_name in os.listdir(images_path):
 
         # check if the image ends with png or jpg or jpeg
-        if (image_name.endswith(".png") or image_name.endswith(".jpg") or image_name.endswith(".jpeg")):
+        image_name_with_lowercase_ending = image_name.lower()
+        if  image_name_with_lowercase_ending.endswith(".png") or \
+            image_name_with_lowercase_ending.endswith(".jpg") or \
+            image_name_with_lowercase_ending.endswith(".jpeg"):
+
             print("GENERATE LABELS FOR: ", image_name)
             image_path = os.path.join(images_path, image_name)
             image_xml_file_name = os.path.splitext(image_name)[0] + '.xml'
@@ -78,8 +103,8 @@ def auto_label_images(images_path: str, min_score_thresh: float):
 def main():
     load_latest_checkpoint_of_custom_object_detection_model()
     auto_label_images(
-        paths['AUGMENTED_IMAGE_PATH'],  
-        min_score_thresh, 
+        args.images_path,  
+        args.min_threshold, 
     )
 
 

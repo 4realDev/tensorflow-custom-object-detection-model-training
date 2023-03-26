@@ -1,7 +1,7 @@
 # pip install requests
 # pip install aiohttp
 # pip install nest-asyncio
-# cd Tensorflow\scripts & python miro-sticky-notes-sync.py
+# cd Tensorflow\scripts & python miro_sticky_notes_sync.py
 
 import cv2
 import matplotlib.pyplot as plt
@@ -46,67 +46,6 @@ def morphology_opening_operation(img):
     img_opened = cv2.dilate(img, kernel, iterations=1)
 
     return img_opened
-
-
-async def get_image_text_data_by_ocr(img_path, ocr_confidence_threshold: float, visualize_text_in_image: bool):
-    result = ocr_model.ocr(img_path)
-
-    # convert all text into array
-    # text_array = [res[1][0] for res in result]
-    # print("\n \n \n")
-    # for text in text_array:
-    #     print(text)
-
-    # 3. Visualise Results
-    # Extracting detected components
-    boxes = [res[0] for res in result]
-    texts = [res[1][0] for res in result]
-    scores = [res[1][1] for res in result]
-
-    # Import image
-    img = cv2.imread(img_path)
-
-    # By default if we import image using openCV, the image will be in BGR
-    # But we want to reorder the color channel to RGB for the draw_ocd method
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
-
-    text_and_boxes_array = []
-
-    # Visualize image and detections
-    for i in range(len(result)):
-        if scores[i] > ocr_confidence_threshold:
-            (xmin, ymin, xmax, ymax) = (
-                int(boxes[i][0][0]),
-                int(boxes[i][1][1]),
-                int(boxes[i][2][0]),
-                int(boxes[i][3][1]))
-
-            text_and_boxes_array.append(
-                {"positions": [xmin, ymin, xmax, ymax], "text": texts[i]})
-
-            if visualize_text_in_image:
-                img = cv2.rectangle(
-                    img=img,
-                    pt1=(xmin, ymin),
-                    pt2=(xmax, ymax),
-                    color=(0, 0, 0),
-                    thickness=2,
-                    lineType=cv2.LINE_AA)
-
-                img = cv2.putText(
-                    img=img,
-                    text=texts[i],
-                    org=(int(xmin + 5), int(ymin + 20)),
-                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                    fontScale=0.5,
-                    color=(0, 0, 0),
-                    thickness=2,
-                    lineType=cv2.LINE_AA)
-
-    cv2.namedWindow('output', cv2.WINDOW_NORMAL)
-    cv2.imshow('output', img)
-    cv2.waitKey(0)
-    return text_and_boxes_array
 
 
 async def opencv_script_thresholding(img_path):

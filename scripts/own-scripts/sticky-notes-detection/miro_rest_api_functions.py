@@ -1,13 +1,10 @@
 # pip install requests
 
 import aiohttp
-import config
 import nest_asyncio
 import asyncio
 import requests
 import json
-from dataclasses import dataclass
-from sklearn.feature_extraction import img_to_graph
 from aiohttp import FormData
 
 nest_asyncio.apply()
@@ -19,7 +16,7 @@ nest_asyncio.apply()
 
 # VARS FOR MIRO REST API
 DEBUG_PRINT_RESPONSES = False
-auth_token = "eyJtaXJvLm9yaWdpbiI6ImV1MDEifQ_N9OybOclP4WmwOKCNUjVuVMDshE"
+auth_token = "eyJtaXJvLm9yaWdpbiI6ImV1MDEifQ_dJFmha4uq9mmYZ9YP3jR42x9_98"
 headers = {
     "Accept": "application/json",
     "Content-Type": "application/json",
@@ -50,12 +47,17 @@ async def get_all_miro_board_names_and_ids(session):
 # GET ALL BOARD ITEMS
 # default limit is maximum (50)
 async def get_all_items(
-    item_type: str,
     board_id: str,
     session: aiohttp.client.ClientSession,
-    max_num_of_items: int = 50
+    max_num_of_items: int = 50,
+    item_type="",
 ):
-    url = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D' )}/items?limit={max_num_of_items}&type={item_type}"
+    url = ""
+
+    if (item_type == ""):
+        url = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D' )}/items?limit={max_num_of_items}"
+    else:
+        url = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D' )}/items?limit={max_num_of_items}&type={item_type}"
 
     async with session.get(url, headers=headers) as resp:
         response = await resp.json()
@@ -104,9 +106,24 @@ async def create_frame(
         if DEBUG_PRINT_RESPONSES:
             print(await resp.text())
         if resp.status == requests.codes.created:
-            print(
-                f"Successfully created frame named {title}.")
+            print(f"Successfully created frame named {title}.")
         return response['id']
+
+
+# DELETE FRAME
+async def delete_frame(
+    frame_id: str,
+    board_id: str,
+    session: aiohttp.client.ClientSession
+):
+    url = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D')}/frames/{frame_id}"
+    # response = requests.delete(url, headers=headers)
+    # if DEBUG_PRINT_RESPONSES:
+    #     print(await response.text())
+    async with session.delete(url, headers=headers) as resp:
+        if DEBUG_PRINT_RESPONSES:
+            print(await resp.text())
+        return resp.status
 
 
 # CREATE ITEM
@@ -123,7 +140,7 @@ async def create_sticky_note(
     url = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D')}/sticky_notes"
     payload = {
         "data": {
-            "content": text,
+            "content": f"<p>{text}</p>",
             "shape": "square"
         },
         "style": {"fillColor": color},
@@ -186,6 +203,7 @@ async def create_line(
         return resp.status
 
 
+# CREATE IMAGE
 async def create_image(
     pos_x: float,
     pos_y: float,
@@ -240,15 +258,16 @@ async def create_image(
 async def create_new_miro_board_or_get_existing(
     name: str,
     description: str,
-    save_in_existing_miro_board: bool,
+    create_new_board: bool,
     session: aiohttp.client.ClientSession
 ) -> str:
     board_names_and_ids = await asyncio.create_task(get_all_miro_board_names_and_ids(session))
     print(f"\nExisting Boards: {board_names_and_ids}")
+    print(f"NAME!!!!: {name}")
 
     # 1. save_in_existing_miro_board flag is set manually to "True" (default is "False")
     #    search for the given board name inside all existing miro boards
-    if save_in_existing_miro_board:
+    if create_new_board == False:
         # 1.1 Board with the board given name exists -> return its id
         for board_name_and_id in board_names_and_ids:
             if board_name_and_id['name'] == name:
@@ -257,7 +276,7 @@ async def create_new_miro_board_or_get_existing(
                 return board_name_and_id['id']
 
         # 1.2 Board with the given board name does not exist -> return ERROR and stop function
-        print(f"\n ERROR: The 'Save in existing Board' checkbox is set to {save_in_existing_miro_board} and the given miro board name {name} was not found inside all miro boards. It could be possible that the searched board does not exist or must be still indexed from MIRO. Please wait a few seconds and try again or uncheck the 'Save in existing Board' checkbox to create a new miro board with the given name. \n")
+        print(f"\n ERROR: The 'Create new Miro Board' checkbox is set to {create_new_board} and the given miro board name {name} was not found inside all miro boards. It could be possible that the searched board does not exist or must be still indexed from MIRO. Please wait a few seconds and try again or check the 'Create new Miro Board' checkbox to create a new miro board. \n")
         return "-1"
 
     # 2. save_in_existing_miro_board flag is "False" -> create a new miro board with the given name
@@ -284,8 +303,8 @@ async def create_new_miro_board_or_get_existing(
 
     async with session.post(url, json=payload, headers=headers) as resp:
         response = await resp.json()
-        if DEBUG_PRINT_RESPONSES:
-            print(await resp.text())
+        # if DEBUG_PRINT_RESPONSES:
+        print(await resp.text())
 
         if resp.status == requests.codes.created:
             print(
@@ -294,34 +313,53 @@ async def create_new_miro_board_or_get_existing(
     return response['id']
 
 
-# !!! NOT IN USE !!!
 # DELETE BOARD ITEM
-async def delete_item(item_id: str):
-    global global_board_id
-    global global_session
-    url: str = f"https://api.miro.com/v2/boards/{global_board_id.replace('=', '%3D')}/items/{item_id}"
+async def delete_item(
+    item_id: str,
+    board_id: str,
+    session: aiohttp.client.ClientSession
+):
 
-    headers = {
-        "Accept": "application/json",
-        "Authorization": "Bearer eyJtaXJvLm9yaWdpbiI6ImV1MDEifQ_Bw1UPxNElmWbBGy8MfSWWJWOCLs"
-    }
+    url: str = f"https://api.miro.com/v2/boards/{board_id.replace('=', '%3D')}/items/{item_id}"
 
-    response = requests.delete(url, headers=headers)
-    if DEBUG_PRINT_RESPONSES:
-        print(await response.text())
+    # response = requests.delete(url, headers=headers)
+    # if DEBUG_PRINT_RESPONSES:
+    #     print(await response.text())
+
+    async with session.delete(url, headers=headers) as resp:
+        if DEBUG_PRINT_RESPONSES:
+            print(await resp.text())
+        return resp.status
+
+    # headers = {
+    #     "Accept": "application/json",
+    #     "Authorization": "Bearer eyJtaXJvLm9yaWdpbiI6ImV1MDEifQ_Bw1UPxNElmWbBGy8MfSWWJWOCLs"
+    # }
+
+    # response = requests.delete(url, headers=headers)
+
+    # # if DEBUG_PRINT_RESPONSES:
+    # print(await resp.text())
+
+    return response.status_code
 
     # WARNING: Seems not to work with global_session.delete(url, headers=headers)
     #     async with global_session.delete(url, headers=headers) as resp:
     #         response = await resp.json()
     #         if DEBUG_PRINT_RESPONSES: print(await resp.text())
 
-
+# !!! NOT IN USE !!!
 # DELETE ALL BOARD ITEMS
-async def delete_all_items(item_type: str):
-    global global_session
-    board_items = await asyncio.create_task(get_all_items(item_type))
+
+
+async def delete_all_items(
+    board_id: str,
+    session: aiohttp.client.ClientSession,
+    item_type: str
+):
+    board_items = await asyncio.create_task(get_all_items(board_id, session=session, item_type=item_type))
     for board_item in board_items:
-        await asyncio.create_task(delete_item(board_item['id']))
+        await asyncio.create_task(delete_item(board_item['id'], session=session))
 
 
 # CREATE LIST OF ITEMS

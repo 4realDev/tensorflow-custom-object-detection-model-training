@@ -31,6 +31,7 @@ r""" Changing something on the config please re-run all the scripts to create a 
     MAIN SCRIPTS
     python C:\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\sticky-notes-detection\miro-sticky-notes-sync.py
     python C:\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\sticky-notes-detection\miro-sticky-notes-sync.py -n Test -s True
+    python C:\_WORK\GitHub\_data-science\TensorFlow\scripts\own-scripts\sticky-notes-detection\miro-sticky-notes-sync.py -n Test -s True -o True
 """
 
 import os
@@ -52,8 +53,8 @@ num_steps = 25000
 fine_tune_checkpoint_type = "detection"  # "classification" or "detection"
 
 # vars for real time object detection
-min_score_thresh = 0.9
-bounding_box_and_label_line_thickness = 10
+min_score_thresh = 0.75
+bounding_box_and_label_line_thickness = 5
 save_original_image_overlayed_with_labeled_detection_bounding_boxes = True
 
 # vars for PADDLE OCR model
@@ -67,7 +68,8 @@ save_image_overlayed_with_ocr_visualization = True
 # PRETRAINED_MODEL_NAME = 'efficientdet_d7_coco17_tpu-32'
 PRETRAINED_MODEL_NAME = 'ssd_resnet50_v1_fpn_640x640_coco17_tpu-8'
 # CUSTOM_MODEL_NAME_SUFFIX = 'my_sticky_notes_no_color'
-CUSTOM_MODEL_NAME_SUFFIX = 'my_sticky_notes'
+# CUSTOM_MODEL_NAME_SUFFIX = 'updated_basic_data_set'
+CUSTOM_MODEL_NAME_SUFFIX = 'working_data_set'
 CUSTOM_MODEL_NAME = f'{CUSTOM_MODEL_NAME_SUFFIX}_{PRETRAINED_MODEL_NAME}_{str(num_steps)}'
 # PRETRAINED_MODEL_URL = 'http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d7_coco17_tpu-32.tar.gz'
 PRETRAINED_MODEL_URL = 'http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8.tar.gz'
@@ -106,5 +108,5 @@ files = {
     'TF_RECORD_SCRIPT': os.path.join(paths['TFOD_TUTORIAL_SCRIPTS_PATH'], TF_RECORD_SCRIPT_NAME),
     'PARTITION_DATASET_SCRIPT': os.path.join(paths['TFOD_TUTORIAL_SCRIPTS_PATH'], PARTITION_DATASET_SCRIPT_NAME),
     'TRAINING_AND_EVAL_SCRIPT': os.path.join(paths['APIMODEL_PATH'], 'research', 'object_detection', 'model_main_tf2.py'),
-    'EXPORTING_SCRIPT': os.path.join(paths['APIMODEL_PATH'], 'research', 'object_detection', 'exporter_main_v2.py')
+    'EXPORTING_SCRIPT': os.path.join(paths['APIMODEL_PATH'], 'research', 'object_detection', 'exporter_main_v2.py'),
 }

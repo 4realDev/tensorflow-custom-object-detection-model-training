@@ -53,7 +53,6 @@ def create_timestamp_folder_and_return_its_path(folder_name: str) -> str:
     recognized_images_timestamp_folder_path: str = os.path.join(
         paths['MIRO_TIMEFRAME_SNAPSHOTS'], folder_name)
 
-    # TODO: FIND BETTER FOLDER STRUCTURE LOGIC
     if not os.path.exists(paths['MIRO_TIMEFRAME_SNAPSHOTS']):
         os.mkdir(paths['MIRO_TIMEFRAME_SNAPSHOTS'])
 
@@ -251,6 +250,7 @@ def rename_cropped_image_with_ocr_string(cropped_image: list, index: int, image_
 
 
 # WAS USED, BUT IS CURRENTLY NOT IN USE
+# http://color.lukas-stratmann.com/color-systems/hsv.html
 # Get dominant color and assign it to miro sticky note color class
 # sticky_note_dominant_rgb_color = get_dominant_color(new_image_file_name_with_ocr_text_in_file_name)
 # sticky_note_color_class = get_sticky_note_color_class_from_rgb(sticky_note_dominant_rgb_color)
