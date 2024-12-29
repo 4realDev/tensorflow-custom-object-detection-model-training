@@ -1,6 +1,0 @@
-{
-    "python.analysis.extraPaths": [
-        "./own-scripts/sticky-notes-detection",
-        "./own-scripts/preprocessing"
-    ]
-}

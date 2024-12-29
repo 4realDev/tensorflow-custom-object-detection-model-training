@@ -4,6 +4,7 @@ import config
 paths = config.paths
 files = config.files
 
+
 def export_custom_model():
     os.system(
         f"python                    {files['EXPORTING_SCRIPT']} " +
@@ -12,8 +13,10 @@ def export_custom_model():
         f"--trained_checkpoint_dir  {paths['CUSTOM_MODEL_PATH']} " +
         f"--output_directory        {paths['CUSTOM_MODEL_EXPORT_PATH']}")
 
+
 def main():
     export_custom_model()
+
 
 if __name__ == '__main__':
     main()
