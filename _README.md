@@ -1,9 +1,3 @@
-# Step-by-step guide to setting up and using TensorFlow's Object Detection API
-
-This is a step-by-step tutorial/guide to setting up and using
-**TensorFlow's Object Detection API** to perform **object detection in
-images/video** on Windows. This guide explains, how to setup your
-Windows environment correctly and how to install Tensorflow and the
 Tensorflow Object Detection API
 
 **Main Source**:
@@ -45,6 +39,58 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 
 &nbsp;
 &nbsp;
+
+---
+
+@ -1,485 +1,485 @@
+
+# Step-by-step guide to setting up and using TensorFlow's Object Detection API
+
+This is a step-by-step tutorial/guide to setting up and using
+**TensorFlow's Object Detection API** to perform **object detection in
+images/video** on Windows. This guide explains, how to setup your
+Windows environment correctly and how to install Tensorflow and the
+Tensorflow Object Detection API
+
+**Main Source**:
+<https://tensorflow-object-detection-api-tutorial.readthedocs.io/en/latest/index.html>
+
+## Target Software versions
+
+- OS: Windows, Linux
+- Python: 3.9
+- (any Python 3.x version should work, although this is not been
+  tested)
+- TensorFlow: 2.5.0
+- MSVC (Mircosoft Visual Studio Compiler) 2019
+
+For GPU support (see later in GPU Support (Optional Step)):
+
+- CUDA Toolkit: 11.2
+- CuDNN: 8.1.0
+
+Or one of the combinations shown on the official TensorFlow side:
+<https://www.tensorflow.org/install/source_windows>
+
+# Steps overview
+
+[I. Create Virtual Environment (optional)](#_Toc118295651)
+
+[II. TensorFlow Installation](#_Toc118295652)
+
+[III. Enable GPU Support (optional)](#_Toc118295653)
+
+[IV. TensorFlow Object Detection API Installation](#_Toc118295654)
+
+[V. Install the TensorFlow Object Detection API](#_Toc118295655)
+
+[VI. Copy TFOD API scripts for model training, evaluation and exporting in
+custom script folder](#_Toc118295656)
+
+[VII. Install LabelImg](#_Toc118295657)
+
+&nbsp;
+&nbsp;
 &nbsp;
 
 # I. Create Virtual Environment (optional)
@@ -69,7 +115,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 >
 > Virtual environment has it's own isolated packages under `Lib/site-packages`
 >
-> ![alt text](readme-media/preprocessing/image1.png)
+> ![alt text](../../../readme-media/preprocessing/image1.png)
 
 ## 3. To activate the virtual environment on windows, run the windows batch script in `Scripts/activate`
 
@@ -77,10 +123,10 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > .\\tfod-sticky-notes\\Scripts\\activate
 > ```
 >
-> ![alt text](readme-media/preprocessing/image2.png)
+> ![alt text](../../../readme-media/preprocessing/image2.png)
 >
 > Now `(tfod-sticky-notes)` is visible and pip list only shows isolated packages `(Lib/site-packages)` in your environment
-> ![alt text](readme-media/preprocessing/image3.png)
+> ![alt text](../../../readme-media/preprocessing/image3.png)
 >
 > Deactivate environment with `deactivate`
 
@@ -117,7 +163,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 >
 > **SOURCE:** <https://www.howtogeek.com/266621/how-to-make-windows-10-accept-file-paths-over-260-characters/>
 >
-> ![alt text](readme-media/preprocessing/image4.png)
+> ![alt text](../../../readme-media/preprocessing/image4.png)
 
 ## 2. Install Visual C++ Build Tools:
 
@@ -181,7 +227,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 >
 > <https://www.tensorflow.org/install/source_windows>
 >
-> ![alt text](readme-media/preprocessing/image5.png)
+> ![alt text](../../../readme-media/preprocessing/image5.png)
 
 > **For TensorFlow to run on your GPU, following requirements must be met:**
 >
@@ -200,7 +246,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > where `\<INSTALL_PATH\>` points to the installation directory specified during the installation of the CUDA Toolkit.
 > By default `\<INSTALL_PATH\> = C:\\Program Files`.
 >
-> ![alt text](readme-media/preprocessing/image6.png)
+> ![alt text](../../../readme-media/preprocessing/image6.png)
 
 ## Environment Setup for GPU Support
 
@@ -218,7 +264,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 >
 > Adjust `pyvenv.cfg` python path inside virtual environment
 >
-> ![alt text](readme-media/preprocessing/image7.png)
+> ![alt text](../../../readme-media/preprocessing/image7.png)
 
 ## Verify the GPU support
 
@@ -299,7 +345,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > Notice from the highlighted console output in the image below, that the library files are now Successfully opened 
 > and a debugging message is presented to confirmthat TensorFlow has successfully Created TensorFlow device.
 >
-> ![alt text](readme-media/preprocessing/image8.png)
+> ![alt text](../../../readme-media/preprocessing/image8.png)
 
 &nbsp;
 &nbsp;
@@ -334,7 +380,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > **1. Head to [protoc releases page](https://github.com/google/protobuf/releases)**
 > and download the latest `protoc-\*-\*.zip` release (e.g. protoc-3.12.3-win64.zip for 64-bit Windows)
 >
-> ![alt text](readme-media/preprocessing/image9.png)
+> ![alt text](../../../readme-media/preprocessing/image9.png)
 
 > **2. Extract contents of the downloaded `protoc-\*-\*.zip` in directory `\<PATH_TO_PROGRAM_FILES\>` of your choice**
 >
@@ -373,7 +419,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > python -m pip install \--use-feature=2020-resolver .
 > ```
 >
-> ![alt text](readme-media/preprocessing/image10.png)
+> ![alt text](../../../readme-media/preprocessing/image10.png)
 
 ## Possible Problem with protobuffer and the default setup.py from the package
 
@@ -403,7 +449,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > pip install \--upgrade protobuf==3.20.0
 > ```
 >
-> ![alt text](readme-media/preprocessing/image11.png)
+> ![alt text](../../../readme-media/preprocessing/image11.png)
 
 ## Test your Installation
 
