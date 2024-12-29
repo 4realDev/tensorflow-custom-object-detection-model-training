@@ -10,21 +10,24 @@ Tensorflow Object Detection API
 <https://tensorflow-object-detection-api-tutorial.readthedocs.io/en/latest/index.html>
 
 ## Target Software versions
--   OS: Windows, Linux
--   Python: 3.9
--   (any Python 3.x version should work, although this is not been
-    tested)
--   TensorFlow: 2.5.0
--   MSVC (Mircosoft Visual Studio Compiler) 2019
+
+- OS: Windows, Linux
+- Python: 3.9
+- (any Python 3.x version should work, although this is not been
+  tested)
+- TensorFlow: 2.5.0
+- MSVC (Mircosoft Visual Studio Compiler) 2019
 
 For GPU support (see later in GPU Support (Optional Step)):
--   CUDA Toolkit: 11.2
--   CuDNN: 8.1.0
+
+- CUDA Toolkit: 11.2
+- CuDNN: 8.1.0
 
 Or one of the combinations shown on the official TensorFlow side:
 <https://www.tensorflow.org/install/source_windows>
 
 # Steps overview
+
 [I. Create Virtual Environment (optional)](#i-create-virtual-environment-optional)
 
 [II. TensorFlow Installation](#ii-tensorflow-installation)
@@ -45,82 +48,98 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 &nbsp;
 
 # I. Create Virtual Environment (optional)
-## Advantages
--   Isolates all python and library dependencies needed for the TFOD
-    model
--   Ensures clean working environment
--   Does not conflict with all other already installed libraries and
-    dependencies -\> no dependency conflicts
--   "Create separated room to work in"
 
-## 1. Create new folder ```\[CUSTOM_MODEL_NAME\]\\venv``` for the virtual environment
+## Advantages
+
+- Isolates all python and library dependencies needed for the TFOD
+  model
+- Ensures clean working environment
+- Does not conflict with all other already installed libraries and
+  dependencies -\> no dependency conflicts
+- "Create separated room to work in"
+
+## 1. Create new folder `\[CUSTOM_MODEL_NAME\]\\venv` for the virtual environment
+
 ## 2. Create the new virtual environment in the repo
+
 > ```
 > cd \[CUSTOM_MODEL_NAME\]\\venv
 > python -m venv tfod-sticky-notes
 > ```
-> Virtual environment has it's own isolated packages under ```Lib/site-packages```
+>
+> Virtual environment has it's own isolated packages under `Lib/site-packages`
 >
 > ![alt text](../../../readme-media/preprocessing/image1.png)
 
-## 3. To activate the virtual environment on windows, run the windows batch script in ```Scripts/activate```
+## 3. To activate the virtual environment on windows, run the windows batch script in `Scripts/activate`
+
 > ```
 > .\\tfod-sticky-notes\\Scripts\\activate
 > ```
+>
 > ![alt text](../../../readme-media/preprocessing/image2.png)
 >
-> Now ```(tfod-sticky-notes)``` is visible and pip list only shows isolated packages ```(Lib/site-packages)``` in your environment
+> Now `(tfod-sticky-notes)` is visible and pip list only shows isolated packages `(Lib/site-packages)` in your environment
 > ![alt text](../../../readme-media/preprocessing/image3.png)
 >
-> Deactivate environment with ```deactivate```
+> Deactivate environment with `deactivate`
 
 ## 4. Update pip libraries and dependencies
+
 > Ensure that we have latest resolvers and upgraded pip install app
 > In virtual environment run:
+>
 > ```
 > python -m pip install \--upgrade pip
 > ```
- 
+
 &nbsp;
 &nbsp;
 &nbsp;
 
 # II. TensorFlow Installation
+
 > Tensorflow is the core deep learning library behind all object detenction functionality.
-> 
+>
 > For it to work we need to install some dependencies.
 
 ## 1. Install TensorFlow PIP package
-> ```pip install tensorflow```
+
+> `pip install tensorflow`
 
 > ### Possible LongPaths problem on windows
+>
 > **ERROR:** Could not install packages due to an OSError
-> 
+>
 > **HINT:** This error might have occurred since this system does not have Windows Long Path support enabled.
-> 
+>
 > **FIX**: Enable LongPaths on Windows
-> 
+>
 > **SOURCE:** <https://www.howtogeek.com/266621/how-to-make-windows-10-accept-file-paths-over-260-characters/>
-> 
+>
 > ![alt text](../../../readme-media/preprocessing/image4.png)
 
 ## 2. Install Visual C++ Build Tools:
+
 > Visual C++ Build Tools are necessary for TensorFlow in order to run.
-> 
+>
 > They can be downloaded under: <https://visualstudio.microsoft.com/vs/community/>
 
 ## 3. Verify your Installation
+
 > ```
 > python -c \"import tensorflow as
 > tf;print(tf.reduce_sum(tf.random.normal(\[1000, 1000\])))\"
 > ```
+>
 > Once above is run, follow print-out similar to one bellow should be seen:
+>
 > ```
 > 2020-06-22 19:20:32.614181: W
 > tensorflow/stream_executor/platform/default/dso_loader.cc:55\] **Could
 > not load dynamic library \'cudart64_101.dll\'; dlerror: cudart64_101.dll
 > not found**
-> 
+>
 > 2020-06-22 19:20:32.620571: I
 > tensorflow/stream_executor/cuda/cudart_stub.cc:29\] Ignore above cudart
 > dlerror **if** you do **not** have a GPU set up on your machine.
@@ -131,7 +150,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > above are installed properly **if** you would like to use GPU. Follow
 > the guide at https://www.tensorflow.org/install/gpu **for** how to
 > download **and** setup the required libraries **for** your platform.
-> 
+>
 > Skipping registering GPU devices\...
 >
 > 2020-06-22 19:20:35.196815: I
@@ -144,7 +163,8 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 &nbsp;
 &nbsp;
 
-#  III. Enable GPU Support (optional)
+# III. Enable GPU Support (optional)
+
 > Enables significant faster model training and evaluating
 > If machine is equipped with compatible CUDA-enabled GPU, it is recommended to install relevant libraries necessary to enable TensorFlow to make use of your GPU,
 > because computational gains from GPU are substantial.
@@ -157,38 +177,35 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > Enables GPU based acceleration when training TOD models.
 > Reason for using GPU: it is exponentially faster to train OD model using GPU versus just using raw CPU and raw memory.
 
-
 > **Source for all proper versions and configurations of dependencies provided by Tensorflow:**
 >
 > <https://www.tensorflow.org/install/source_windows>
 >
->  ![alt text](../../../readme-media/preprocessing/image5.png)
-
+> ![alt text](../../../readme-media/preprocessing/image5.png)
 
 > **For TensorFlow to run on your GPU, following requirements must be met:**
 >
->- Nvidia GPU (GTX 650 or newer)
+> - Nvidia GPU (GTX 650 or newer)
 >
->- Installed CUDA Toolkit v11.2
+> - Installed CUDA Toolkit v11.2
 >
->- Installed CuDNN 8.1.0
-
+> - Installed CuDNN 8.1.0
 
 > **IMPORTANT:**
 > Important that tensorflow version matches cuDNN and CUDA version.
 > If it don't match, it will still run but won't leverage your GPU.
 
-
 > Extract the contents of the zip file (i.e. the folder named cuda)
-> inside ```\<INSTALL_PATH\>\\NVIDIA GPU Computing Toolkit\\CUDA\\v11.2\\```,
-> where ```\<INSTALL_PATH\>``` points to the installation directory specified during the installation of the CUDA Toolkit. 
-> By default ```\<INSTALL_PATH\> = C:\\Program Files```.
-> 
->  ![alt text](../../../readme-media/preprocessing/image6.png)
-
+> inside `\<INSTALL_PATH\>\\NVIDIA GPU Computing Toolkit\\CUDA\\v11.2\\`,
+> where `\<INSTALL_PATH\>` points to the installation directory specified during the installation of the CUDA Toolkit.
+> By default `\<INSTALL_PATH\> = C:\\Program Files`.
+>
+> ![alt text](../../../readme-media/preprocessing/image6.png)
 
 ## Environment Setup for GPU Support
+
 > **Add the following paths to environment variables:**
+>
 > ```
 > \<INSTALL_PATH\>\\NVIDIA GPU Computing Toolkit\\CUDA\\v11.2\\bin
 > \<INSTALL_PATH\>\\NVIDIA GPU Computing Toolkit\\CUDA\\v11.2\\libnvvp
@@ -198,24 +215,29 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > ```
 
 > ### Possible Python Path Error
-> Adjust ```pyvenv.cfg``` python path inside virtual environment
-> 
->  ![alt text](../../../readme-media/preprocessing/image7.png)
+>
+> Adjust `pyvenv.cfg` python path inside virtual environment
+>
+> ![alt text](../../../readme-media/preprocessing/image7.png)
 
 ## Verify the GPU support
+
 > Run the following command in a new terminal:
+>
 > ```
 > python -c \"import tensorflow as
 > tf;print(tf.reduce_sum(tf.random.normal(\[1000, 1000\])))\"
 > ```
+>
 > Once the above is run, you should see a print-out like the one bellow:
+>
 > ```
 > 2021-06-08 18:28:38.452128: I
 > tensorflow/stream_executor/platform/default/dso_loader.cc:53\]
 > Successfully opened dynamic library cudart64_110.dll
 >
 > \...
-> 
+>
 > 2021-06-08 18:28:40.973992: I
 > tensorflow/core/common_runtime/gpu/gpu_device.cc:1733\] Found device 0
 > **with** properties:
@@ -273,23 +295,26 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 >
 > tf.Tensor(641.5694, shape=(), dtype=float32)
 > ```
-> 
+>
 > Notice from the highlighted console output in the image below, that the library files are now Successfully opened 
 > and a debugging message is presented to confirmthat TensorFlow has successfully Created TensorFlow device.
-> 
->  ![alt text](../../../readme-media/preprocessing/image8.png)
+>
+> ![alt text](../../../readme-media/preprocessing/image8.png)
 
 &nbsp;
 &nbsp;
 &nbsp;
 
 # IV. TensorFlow Object Detection API Installation
+
 ## Downloading the TensorFlow Model Garden:
-> - Create new folder under e.g. Documents named TensorFlow. (e.g. ```C:\\Users\\user\\Documents\\TensorFlow```).
-> 
+
+> - Create new folder under e.g. Documents named TensorFlow. (e.g. `C:\\Users\\user\\Documents\\TensorFlow`).
+>
 > - To download the models clone [TensorFlow Models repository](https://github.com/tensorflow/models) inside the TensorFlow folder.
-> 
+>
 > You should now have a single folder named models under your TensorFlow folder, which contains another 4 folders as such:
+>
 > ```
 > TensorFlow/
 > └─ models/
@@ -301,43 +326,48 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > ```
 
 ## Install and compile protobuf
-> Tensorflow Object Detection API uses Protobufs to configure model and training parameters. 
-> 
+
+> Tensorflow Object Detection API uses Protobufs to configure model and training parameters.
+>
 > Before the framework can be used, Protobuf libraries must be downloaded and compiled.
 
 > **1. Head to [protoc releases page](https://github.com/google/protobuf/releases)**
-> and download the latest ```protoc-\*-\*.zip``` release (e.g. protoc-3.12.3-win64.zip for 64-bit Windows)
+> and download the latest `protoc-\*-\*.zip` release (e.g. protoc-3.12.3-win64.zip for 64-bit Windows)
 >
 > ![alt text](../../../readme-media/preprocessing/image9.png)
 
-> **2. Extract contents of the downloaded ```protoc-\*-\*.zip``` in directory ```\<PATH_TO_PROGRAM_FILES\>``` of your choice**
-> 
+> **2. Extract contents of the downloaded `protoc-\*-\*.zip` in directory `\<PATH_TO_PROGRAM_FILES\>` of your choice**
+>
 > (e.g. C:\\Program Files\\Google Protobuf).
 
-> **3. Add ```C:\\Program Files\\Google Protobuf\\bin``` to your Path environment variable.**
+> **3. Add `C:\\Program Files\\Google Protobuf\\bin` to your Path environment variable.**
 
-> **4. In new terminal , cd into ```TensorFlow/models/research/``` directory and run the following command:**
+> **4. In new terminal , cd into `TensorFlow/models/research/` directory and run the following command:**
 >
 > ```
 > *\# From within TensorFlow/models/research/*
 > cd C:\\\\\_WORK\\GitHub\\\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research
 > protoc object_detection/protos/\*.proto \--python_out=.
 > ```
+>
 > No feedback -- assuming no error
 
 # V. Install the TensorFlow Object Detection API
+
 > Installation of the Object Detection API is achieved by installing the object_detection package.
-> This is done by running the following commands from within ```Tensorflow\\models\\research```:
+> This is done by running the following commands from within `Tensorflow\\models\\research`:
 >
 > **From within TensorFlow/models/research/ copy the setup.py file inside the folder**
+>
 > ```
 > copy
 > C:\\\\\_WORK\\GitHub\\\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research\\object_detection\\packages\\tf2
 > C:\\\\\_WORK\\GitHub\\\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research
 > ```
 >
-> **Run the setup.py file from within ```TensorFlow/models/research/``` to automatically install all necessary packages 
+> **Run the setup.py file from within `TensorFlow/models/research/` to automatically install all necessary packages
 > and libraires for the TensorFlow Object Detection API**
+>
 > ```
 > cd C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research
 > python -m pip install \--use-feature=2020-resolver .
@@ -346,10 +376,11 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > ![alt text](../../../readme-media/preprocessing/image10.png)
 
 ## Possible Problem with protobuffer and the default setup.py from the package
+
 > **ERROR:**
-> 
+>
 > ERROR: pip\'s dependency resolver does not currently take into account all the packages that are installed.
-> 
+>
 > This behaviour is the source of the following dependency conflicts.
 >
 > ```
@@ -363,25 +394,28 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 >
 > but you have protobuf 4.21.6 which is incompatible.
 > ```
-> 
 
 > **SUGGESTED FIX:**
-> 
+>
 > Downgrade protobuf version
+>
 > ```
 > pip install \--upgrade protobuf==3.20.0
 > ```
-> 
->  ![alt text](../../../readme-media/preprocessing/image11.png)
+>
+> ![alt text](../../../readme-media/preprocessing/image11.png)
 
 ## Test your Installation
+
 > **From within TensorFlow/models/research/ run:**
+>
 > ```
 > cd C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research
 > python object_detection/builders/model_builder_tf2_test.py
 > ```
 >
 > Printout should show "OK" and look like the one below:
+>
 > ```
 > \...
 >
@@ -390,33 +424,35 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > \[ RUN \] ModelBuilderTF2Test.test_invalid_faster_rcnn_batchnorm_update
 >
 > \...
-> 
+>
 > INFO:tensorflow:time(\_\_main\_\_.ModelBuilderTF2Test.test_unknown-ssd_feature_extractor):
 > 0.0s
-> 
+>
 > I0608 18:49:13.197239 29296 test_util.py:2102\]
 > time(\_\_main\_\_.ModelBuilderTF2Test.test_unknown-ssd_feature_extractor):
 > 0.0s
-> 
+>
 > \[ OK \] ModelBuilderTF2Test.test_unknown-ssd_feature_extractor
-> 
+>
 > \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--
-> 
+>
 > Ran 24 tests **in** 29.980s
-> 
+>
 > **OK (skipped=1)**
 > ```
 
 # VI. Copy TFOD API scripts for model training, evaluation and exporting in custom script folder
+
 > - Create folder inside TensorFlow/scripts named tfod-api-scripts
 >
-> - Copy the TensorFlow Object Detection API scripts model_main_tf2.py and exporter_main_v2.py from TensorFlow\\models\\research\\object_detection\\ into the new 
-> created folder TensorFlow\\scripts\\tfod-api-scripts
+> - Copy the TensorFlow Object Detection API scripts model_main_tf2.py and exporter_main_v2.py from TensorFlow\\models\\research\\object_detection\\ into the new
+>   created folder TensorFlow\\scripts\\tfod-api-scripts
 >
 > model_main_tf2.py is used for the training and evaluation of the model (necessary)
 > exporter_main_v2.py is used for the exporting of the model (optional)
 >
 > **From within TensorFlow/models/research/ run:**
+>
 > ```
 > copy
 > C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research\\object_detection\\**model_main_tf2.py**
@@ -424,6 +460,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > ```
 >
 > **From within TensorFlow/models/research/ run:**
+>
 > ```
 > copy
 > C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\tensorflow-model-garden\\research\\object_detection\\**exporter_main_v2.py**
@@ -431,13 +468,15 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > ```
 
 # VII. Install LabelImg
+
 > Recommended way with PIP Package Manager does not work properly with python 3.10.
 > Instead use the "Build from source" Way:
 
 ## **Clone labelImg repo from GitHub**
+
 > - Inside TensorFlow folder, create new directory named addons and navigate into it
 >
-> - Clone the labelImg repo with Git inside the ```TensorFlow\\addons``` folder
+> - Clone the labelImg repo with Git inside the `TensorFlow\\addons` folder
 >
 > ```
 > cd C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\addons
@@ -445,6 +484,7 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > ```
 >
 > **The final folder structure should look like this:**
+>
 > ```
 > TensorFlow/
 > ├─ scripts
@@ -462,9 +502,10 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > ```
 
 ## **Install dependencies and compiling package**
+
 > - Open new terminal and activate virtual environment
 >
-> - Navigate into ```TensorFlow/addons/labelImg``` and run the following commands:
+> - Navigate into `TensorFlow/addons/labelImg` and run the following commands:
 >
 > ```
 > cd C:\\\_WORK\\GitHub\\\_data-science\\TensorFlow\\addons\\labelImg
@@ -472,11 +513,13 @@ custom script folder](#vi-copy-tfod-api-scripts-for-model-training-evaluation-an
 > ```
 
 ## **Test your installation**
-> **From within ```Tensorflow/addons/labelImg```**
-> 
+
+> **From within `Tensorflow/addons/labelImg`**
+>
 > ```
 > python labelImg.py
 > ```
+>
 > **or:**
 >
 > ```
