@@ -5,9 +5,9 @@ cd [ROOT_PATH]\\venv
 
 1. Adjust the “config.py” file in [ROOT_PATH] according to your needs
 2. Run the “create_model_workspace.py” script to setup the folder structure, create the label map, download and extract the pre-trained model, copy the pipeline.config file from the pre-trained model into the custom model and adjust the pipeline.config
-> ```
-> python [ROOT_PATH]\create_model_workspace.py
-> ```
+    ```
+    python [ROOT_PATH]\create_model_workspace.py
+    ```
 3. Collect images and label them with labelImg to create their XML file
 ```
 python [ROOT_PATH]\addons\labelImg\labelImg.py
