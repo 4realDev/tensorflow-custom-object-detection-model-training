@@ -1,34 +1,35 @@
 # How to use this repository
-0.	Activate virtual environment
-cd [ROOT_PATH]\\venv
-.\tfod-sticky-notes\Scripts\activate
-
-1. Adjust the ```"config.py"``` file in ```[ROOT_PATH]``` according to your needs
-2. Run the ```"create_model_workspace.py"``` script to setup the folder structure, create the label map, download and extract the pre-trained model, copy the ```pipeline.config``` file from the pre-trained model into the custom model and adjust the ```pipeline.config```
+0. Activate virtual environment
+    ```
+    cd [ROOT_PATH]\venv
+    .\tfod-sticky-notes\Scripts\activate
+    ```
+2. Adjust the `"config.py"` file in `[ROOT_PATH]` according to your needs
+3. Run the `"create_model_workspace.py"` script to setup the folder structure, create the label map, download and extract the pre-trained model, copy the `pipeline.config` file from the pre-trained model into the custom model and adjust the `pipeline.config`
     ```
     python [ROOT_PATH]\create_model_workspace.py
     ```
-3. Collect images and label them with labelImg to create their XML file
+4. Collect images and label them with labelImg to create their XML file
     ```
     python [ROOT_PATH]\addons\labelImg\labelImg.py
     ```
-5. Run the ```"prepare_image_data_for_training.py```" script to partition the image data into test and train and to create the ```tf.records``` for ```test.record``` and ```train.record``` out of the labeled image data
+5. Run the `"prepare_image_data_for_training.py`" script to partition the image data into test and train and to create the `tf.records` for `test.record` and `train.record` out of the labeled image data
     ```
     python [ROOT_PATH]\prepare_image_data_for_training.py
     ```
-7. Run the ```"train_custom_model.py"``` script to train the model
+7. Run the `"train_custom_model.py"` script to train the model
     ```
     python [ROOT_PATH]\train_custom_model.py
     ```
-9. Run the ```"eval_custom_model.py"``` script to eval the model
+9. Run the `"eval_custom_model.py"` script to eval the model
     ```
     python [ROOT_PATH]\eval_custom_model.py
     ```
-11. Run the ```"run_tensorboard_on_custom_model.py"``` script to start TensorBoard servor for custom model
+11. Run the `"run_tensorboard_on_custom_model.py"` script to start TensorBoard servor for custom model
     ```
     python [ROOT_PATH]\run_tensorboard_on_custom_model.py
     ```
-13. Run the ```"export_custom_model.py"``` script to export the custom model into the export folder within the custom models workspace
+13. Run the `"export_custom_model.py"` script to export the custom model into the export folder within the custom models workspace
     ```
     python [ROOT_PATH]\export_custom_model.py
     ```
